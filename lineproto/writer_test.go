@@ -50,7 +50,7 @@ func BenchmarkWriteBatch(b *testing.B) {
 			b.Fatal(err)
 		}
 	}
-	err = w.EndBatch()
+	err = w.EndBatch(true)
 	if err != nil {
 		b.Fatal(err)
 	}
@@ -70,7 +70,7 @@ func BenchmarkWriteBatchConcurrent(b *testing.B) {
 			<-start
 			_ = w.StartBatch()
 			_ = w.WriteLine(data)
-			_ = w.EndBatch()
+			_ = w.EndBatch(false)
 		}()
 	}
 	b.ResetTimer()

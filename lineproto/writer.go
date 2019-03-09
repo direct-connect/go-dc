@@ -103,15 +103,16 @@ func (w *Writer) StartBatch() error {
 	return err
 }
 
-// EndBatch flushes a batch of messages.
-func (w *Writer) EndBatch() error {
+// EndBatch flushes a batch of messages. If force is set, the batch will be flushed
+// immediately instead of interleaving with other batches.
+func (w *Writer) EndBatch(force bool) error {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 	w.lvl--
 	if w.lvl < 0 {
 		return errors.New("unpaired EndBatch")
 	}
-	if w.lvl > 0 {
+	if !force && w.lvl > 0 {
 		// someone will flush for us
 		return nil
 	}
@@ -153,7 +154,7 @@ func (w *AsyncWriter) WriteLineAsync(data []byte) error {
 	}
 	err = w.Writer.WriteLine(data)
 	if err != nil {
-		_ = w.Writer.EndBatch()
+		_ = w.Writer.EndBatch(false)
 		return err
 	}
 
@@ -176,7 +177,7 @@ func (w *AsyncWriter) WriteLineAsync(data []byte) error {
 				select {
 				case <-un:
 				default:
-					_ = w.Writer.EndBatch()
+					_ = w.Writer.EndBatch(false)
 					w.schedule = nil
 					w.unschedule = nil
 				}
@@ -201,7 +202,7 @@ func (w *AsyncWriter) Flush() error {
 	close(w.unschedule)
 	w.schedule = nil
 	w.unschedule = nil
-	if err := w.Writer.EndBatch(); err != nil {
+	if err := w.Writer.EndBatch(true); err != nil {
 		return err
 	}
 	return w.Writer.Flush()
