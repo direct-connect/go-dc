@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"sync"
 
 	"github.com/direct-connect/go-dc/lineproto"
 )
@@ -45,11 +46,13 @@ func NewReader(r io.Reader) *Reader {
 	}
 }
 
+// Reader is safe for concurrent use.
 type Reader struct {
 	*lineproto.Reader
 
 	maxCmdName int
 
+	mu sync.Mutex
 	// dec is the current decoder for the text values.
 	// It converts connection encoding to UTF8. Nil value means that connection uses UTF8.
 	dec *TextDecoder
@@ -78,7 +81,9 @@ func (r *Reader) SetMaxCmdName(n int) {
 
 // SetDecoder sets a text decoder for the connection.
 func (r *Reader) SetDecoder(dec *TextDecoder) {
+	r.mu.Lock()
 	r.dec = dec
+	r.mu.Unlock()
 }
 
 // ReadMsg reads a single message.
@@ -100,6 +105,8 @@ func (r *Reader) ReadMsgTo(m Message) error {
 }
 
 func (r *Reader) readMsgTo(ptr *Message) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
 	for {
 		line, err := r.ReadLine()
 		if err != nil {

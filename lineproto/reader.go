@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"sync"
 )
 
 const (
@@ -32,13 +33,15 @@ func NewReader(r io.Reader, delim byte) *Reader {
 	}
 }
 
+// Reader is safe for concurrent use.
 type Reader struct {
 	r     io.Reader
-	err   error
 	delim byte
 
 	maxLine int
 
+	mu   sync.Mutex
+	err  error
 	buf  []byte
 	i    int
 	mbuf bytes.Buffer // TODO
@@ -101,6 +104,8 @@ func (r *Reader) readUntil(delim string, max int) ([]byte, error) {
 // a delimiter and is in the connection encoding. The buffer is only valid until the next
 // call to Read or ReadLine.
 func (r *Reader) ReadLine() ([]byte, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
 	if err := r.err; err != nil {
 		return nil, err
 	}
