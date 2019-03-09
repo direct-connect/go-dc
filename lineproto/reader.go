@@ -46,6 +46,9 @@ type Reader struct {
 	i    int
 	mbuf bytes.Buffer // TODO
 
+	// Safe can be set to disable internal mutex.
+	Safe bool
+
 	// OnLine is called each time a raw protocol line is read from the connection.
 	// The buffer will contain a delimiter and is in the connection encoding.
 	// The function may return (false, nil) to ignore the message.
@@ -104,8 +107,10 @@ func (r *Reader) readUntil(delim string, max int) ([]byte, error) {
 // a delimiter and is in the connection encoding. The buffer is only valid until the next
 // call to Read or ReadLine.
 func (r *Reader) ReadLine() ([]byte, error) {
-	r.mu.Lock()
-	defer r.mu.Unlock()
+	if !r.Safe {
+		r.mu.Lock()
+		defer r.mu.Unlock()
+	}
 	if err := r.err; err != nil {
 		return nil, err
 	}

@@ -105,8 +105,10 @@ func (r *Reader) ReadMsgTo(m Message) error {
 }
 
 func (r *Reader) readMsgTo(ptr *Message) error {
-	r.mu.Lock()
-	defer r.mu.Unlock()
+	if !r.Safe {
+		r.mu.Lock()
+		defer r.mu.Unlock()
+	}
 	for {
 		line, err := r.ReadLine()
 		if err != nil {
