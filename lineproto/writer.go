@@ -17,7 +17,8 @@ func NewWriter(w io.Writer) *Writer {
 // Writer is safe for concurrent use.
 type Writer struct {
 	// OnLine is called each time a raw protocol message is written.
-	OnLine func(line []byte) error
+	// The function may return (false, nil) to skip writing the message.
+	OnLine func(line []byte) (bool, error)
 
 	mu  sync.Mutex
 	w   io.Writer
@@ -47,9 +48,11 @@ func (w *Writer) writeLine(data []byte) error {
 		return w.err
 	}
 	if w.OnLine != nil {
-		if err := w.OnLine(data); err != nil {
+		if ok, err := w.OnLine(data); err != nil {
 			w.err = err
 			return err
+		} else if !ok {
+			return nil
 		}
 	}
 	if w.lvl != 0 {
