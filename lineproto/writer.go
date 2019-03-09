@@ -42,6 +42,13 @@ func (w *Writer) flush() error {
 	return err
 }
 
+// Flush forces all buffered writes to be flushed. Partial batch data will be flushed as well.
+func (w *Writer) Flush() error {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	return w.flush()
+}
+
 // writeLine writes a single protocol message.
 func (w *Writer) writeLine(data []byte) error {
 	if w.err != nil {
@@ -183,16 +190,19 @@ func (w *AsyncWriter) WriteLineAsync(data []byte) error {
 	return nil
 }
 
-// Flush waits for all async writes to complete.
+// Flush waits for all async writes to complete and forces the flush of internal buffers.
 func (w *AsyncWriter) Flush() error {
 	w.amu.Lock()
 	defer w.amu.Unlock()
 	if w.schedule == nil {
-		return nil
+		return w.Writer.Flush()
 	}
 	// routine will now exit, we don't have to wait for it
 	close(w.unschedule)
 	w.schedule = nil
 	w.unschedule = nil
-	return w.Writer.EndBatch()
+	if err := w.Writer.EndBatch(); err != nil {
+		return err
+	}
+	return w.Writer.Flush()
 }
