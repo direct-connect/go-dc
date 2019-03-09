@@ -7,6 +7,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/direct-connect/go-dc"
 	"github.com/direct-connect/go-dc/tiger"
 )
 
@@ -85,7 +86,9 @@ var casesUnmarshal = []struct {
 			I2:   0,
 			I3:   1,
 			I4:   2721,
-			Soft: "PtokaX",
+			Soft: dc.Software{
+				Name: "PtokaX",
+			},
 		},
 	},
 	{
@@ -94,14 +97,17 @@ var casesUnmarshal = []struct {
 		data:    `Angels vs Demons$dc.milenahub.ru$Cogitationis poenam nemo patitur.$20480$0$0$0$Verlihub 1.1.0.12$=FAUST= & KCAHDEP$Public HUB$CP1251`,
 		expData: `Angels vs Demons$dc.milenahub.ru$Cogitationis poenam nemo patitur.$20480$0$0$0$Verlihub 1.1.0.12$=FAUST= &amp; KCAHDEP$Public HUB$CP1251`,
 		msg: &HubINFO{
-			Name:     "Angels vs Demons",
-			Host:     "dc.milenahub.ru",
-			Desc:     "Cogitationis poenam nemo patitur.",
-			I1:       20480,
-			I2:       0,
-			I3:       0,
-			I4:       0,
-			Soft:     "Verlihub 1.1.0.12",
+			Name: "Angels vs Demons",
+			Host: "dc.milenahub.ru",
+			Desc: "Cogitationis poenam nemo patitur.",
+			I1:   20480,
+			I2:   0,
+			I3:   0,
+			I4:   0,
+			Soft: dc.Software{
+				Name:    "Verlihub",
+				Version: "1.1.0.12",
+			},
 			Owner:    "=FAUST= & KCAHDEP",
 			State:    "Public HUB",
 			Encoding: "CP1251",
@@ -113,14 +119,17 @@ var casesUnmarshal = []struct {
 		data:    `hub name$dc.example.com:8000$hub desc$3000$32212254720$3$40$YnHub 1.0364$owner$desc 2$admin@example.com$`,
 		expData: `hub name$dc.example.com:8000$hub desc$3000$32212254720$3$40$YnHub 1.0364$owner$desc 2$`,
 		msg: &HubINFO{
-			Name:  "hub name",
-			Host:  "dc.example.com:8000",
-			Desc:  "hub desc",
-			I1:    3000,
-			I2:    32212254720,
-			I3:    3,
-			I4:    40,
-			Soft:  "YnHub 1.0364",
+			Name: "hub name",
+			Host: "dc.example.com:8000",
+			Desc: "hub desc",
+			I1:   3000,
+			I2:   32212254720,
+			I3:   3,
+			I4:   40,
+			Soft: dc.Software{
+				Name:    "YnHub",
+				Version: "1.0364",
+			},
 			Owner: "owner",
 			State: "desc 2",
 		},
@@ -129,10 +138,12 @@ var casesUnmarshal = []struct {
 		typ:  "MyINFO",
 		data: `$ALL johndoe RU<ApexDC++ V:0.4.0,M:P,H:27/1/3,S:92,L:512>$ $LAN(T3)K$example@example.com$1234$`,
 		msg: &MyINFO{
-			Name:           "johndoe",
-			Desc:           "RU",
-			Client:         "ApexDC++",
-			Version:        "0.4.0",
+			Name: "johndoe",
+			Desc: "RU",
+			Client: dc.Software{
+				Name:    "ApexDC++",
+				Version: "0.4.0",
+			},
 			Mode:           UserModePassive,
 			HubsNormal:     27,
 			HubsRegistered: 1,
@@ -164,10 +175,12 @@ var casesUnmarshal = []struct {
 		data:    `$ALL whist RU [29]some desc<GreylynkDC++ v:2.3.5,$ $LAN(T1)A$$65075277005$`,
 		expData: `$ALL whist RU [29]some desc<GreylynkDC++ V:2.3.5,M: ,H:0/0/0,S:0>$ $LAN(T1)A$$65075277005$`,
 		msg: &MyINFO{
-			Name:      "whist",
-			Desc:      "RU [29]some desc",
-			Client:    "GreylynkDC++",
-			Version:   "2.3.5",
+			Name: "whist",
+			Desc: "RU [29]some desc",
+			Client: dc.Software{
+				Name:    "GreylynkDC++",
+				Version: "2.3.5",
+			},
 			Mode:      UserModeUnknown,
 			Conn:      "LAN(T1)",
 			Flag:      'A',
@@ -180,8 +193,10 @@ var casesUnmarshal = []struct {
 		data:    `$ALL vespa9347q1 <StrgDC++,M:A,H:1 /0/0,S:2>$ $0.01.$$37038592310$`,
 		expData: `$ALL vespa9347q1 <StrgDC++ V:,M:A,H:1/0/0,S:2>$ $0.01.$$37038592310$`,
 		msg: &MyINFO{
-			Name:           "vespa9347q1",
-			Client:         "StrgDC++",
+			Name: "vespa9347q1",
+			Client: dc.Software{
+				Name: "StrgDC++",
+			},
 			Mode:           UserModeActive,
 			HubsNormal:     1,
 			HubsRegistered: 0,
@@ -232,9 +247,11 @@ var casesUnmarshal = []struct {
 		data:    `$ALL N8611 <++ V:0.868,M:A,H:34/3/2,S:3>$A$0.005.$$27225945203$`,
 		expData: `$ALL N8611 <++ V:0.868,M:A,H:34/3/2,S:3>$ $0.005.$$27225945203$`,
 		msg: &MyINFO{
-			Name:           "N8611",
-			Client:         "++",
-			Version:        "0.868",
+			Name: "N8611",
+			Client: dc.Software{
+				Name:    "++",
+				Version: "0.868",
+			},
 			Mode:           UserModeActive,
 			HubsNormal:     34,
 			HubsRegistered: 3,

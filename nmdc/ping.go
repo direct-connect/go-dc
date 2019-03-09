@@ -5,6 +5,8 @@ import (
 	"errors"
 	"strconv"
 	"strings"
+
+	"github.com/direct-connect/go-dc"
 )
 
 func init() {
@@ -30,7 +32,7 @@ type HubINFO struct {
 	I2       int // TODO
 	I3       int // TODO
 	I4       int // TODO
-	Soft     string
+	Soft     dc.Software
 	Owner    string
 	State    string // TODO
 	Encoding string
@@ -64,7 +66,13 @@ func (m *HubINFO) MarshalNMDC(enc *TextEncoder, buf *bytes.Buffer) error {
 	buf.WriteString(strconv.Itoa(m.I4))
 
 	buf.WriteByte(sep)
-	buf.WriteString(m.Soft)
+	if m.Soft.Version == "" {
+		buf.WriteString(m.Soft.Name)
+	} else {
+		buf.WriteString(m.Soft.Name)
+		buf.WriteString(" ")
+		buf.WriteString(m.Soft.Version)
+	}
 
 	buf.WriteByte(sep)
 	if err := String(m.Owner).MarshalNMDC(enc, buf); err != nil {
@@ -124,7 +132,12 @@ func (m *HubINFO) UnmarshalNMDC(dec *TextDecoder, data []byte) error {
 			}
 			m.I4 = i4
 		case 7:
-			m.Soft = string(field)
+			soft := string(field)
+			m.Soft.Name = soft
+			if i := strings.LastIndex(soft, " "); i >= 0 {
+				m.Soft.Name = soft[:i]
+				m.Soft.Version = soft[i+1:]
+			}
 		case 8:
 			var s String
 			if err := s.UnmarshalNMDC(dec, field); err != nil {

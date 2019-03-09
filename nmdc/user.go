@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+
+	"github.com/direct-connect/go-dc"
 )
 
 func init() {
@@ -92,8 +94,7 @@ const (
 type MyINFO struct {
 	Name           string
 	Desc           string
-	Client         string
-	Version        string
+	Client         dc.Software
 	Mode           UserMode
 	HubsNormal     int
 	HubsRegistered int
@@ -120,11 +121,11 @@ func (m *MyINFO) MarshalNMDC(enc *TextEncoder, buf *bytes.Buffer) error {
 		return err
 	}
 	buf.WriteString("<")
-	buf.WriteString(m.Client)
+	buf.WriteString(m.Client.Name)
 	buf.WriteString(" ")
 
 	buf.WriteString("V:")
-	buf.WriteString(m.Version)
+	buf.WriteString(m.Client.Version)
 
 	buf.WriteString(",M:")
 	if m.Mode != UserModeUnknown && m.Mode != ' ' {
@@ -285,7 +286,7 @@ func (m *MyINFO) unmarshalTag(tag []byte) error {
 		val := field[i+1:]
 		switch key {
 		case "V", "v":
-			m.Version = string(val)
+			m.Client.Version = string(val)
 		case "M", "m":
 			if len(val) == 1 {
 				m.Mode = UserMode(val[0])
@@ -322,7 +323,7 @@ func (m *MyINFO) unmarshalTag(tag []byte) error {
 			extra[key] = string(val)
 		}
 	}
-	m.Client = string(client)
+	m.Client.Name = string(client)
 	if len(extra) != 0 {
 		m.Extra = extra
 	}
