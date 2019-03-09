@@ -54,7 +54,7 @@ func (m *ChatMessage) UnmarshalNMDC(dec *TextDecoder, data []byte) error {
 		data = data[1:]
 		i := bytes.Index(data, []byte("> "))
 		if i < 0 {
-			i = bytes.Index(data, []byte(">"))
+			i = bytes.IndexByte(data, '>')
 		}
 		if i < 0 {
 			return &ErrProtocolViolation{
@@ -196,7 +196,7 @@ func (m *MCTo) UnmarshalNMDC(dec *TextDecoder, data []byte) error {
 	data = data[i+2:]
 	m.To = string(name)
 
-	i = bytes.Index(data, []byte(" "))
+	i = bytes.IndexByte(data, ' ')
 	if i < 0 {
 		return errors.New("invalid MCTo: no message delimiter")
 	} else if err := name.UnmarshalNMDC(dec, data[:i]); err != nil {
@@ -271,7 +271,7 @@ func (m *UserCommand) UnmarshalNMDC(dec *TextDecoder, data []byte) error {
 		return errors.New("invalid user command")
 	}
 
-	t, err := strconv.Atoi(string(arr[0]))
+	t, err := atoiTrim(arr[0])
 	if err != nil {
 		return fmt.Errorf("invalid type in user command: %q", string(arr[0]))
 	}
@@ -282,7 +282,7 @@ func (m *UserCommand) UnmarshalNMDC(dec *TextDecoder, data []byte) error {
 	}); i >= 0 {
 		arr[1] = arr[1][:i]
 	}
-	c, err := strconv.Atoi(string(arr[1]))
+	c, err := atoiTrim(arr[1])
 	if err != nil {
 		return fmt.Errorf("invalid context in user command: %q", string(arr[1]))
 	}
@@ -292,7 +292,7 @@ func (m *UserCommand) UnmarshalNMDC(dec *TextDecoder, data []byte) error {
 	}
 
 	val := arr[2]
-	i := bytes.Index(val, []byte("$"))
+	i := bytes.IndexByte(val, '$')
 	if i < 1 {
 		return fmt.Errorf("invalid raw user command: %q", string(data))
 	}

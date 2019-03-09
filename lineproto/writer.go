@@ -5,6 +5,7 @@ import (
 	"errors"
 	"io"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -20,6 +21,8 @@ type Writer struct {
 	// The function may return (false, nil) to skip writing the message.
 	OnLine func(line []byte) (bool, error)
 
+	errNolock atomic.Value // synced with err
+
 	mu  sync.Mutex
 	w   io.Writer
 	bw  *bufio.Writer
@@ -27,17 +30,20 @@ type Writer struct {
 	lvl int
 }
 
+func (w *Writer) setError(err error) {
+	w.err = err
+	w.errNolock.Store(err)
+}
+
 func (w *Writer) Err() error {
-	w.mu.Lock()
-	err := w.err
-	w.mu.Unlock()
-	return err
+	v, _ := w.errNolock.Load().(error)
+	return v
 }
 
 func (w *Writer) flush() error {
 	err := w.bw.Flush()
-	if w.err != nil {
-		w.err = err
+	if err != nil {
+		w.setError(err)
 	}
 	return err
 }
@@ -56,17 +62,17 @@ func (w *Writer) writeLine(data []byte) error {
 	}
 	if w.OnLine != nil {
 		if ok, err := w.OnLine(data); err != nil {
-			w.err = err
+			w.setError(err)
 			return err
 		} else if !ok {
 			return nil
 		}
 	}
-	if w.lvl != 0 {
+	if w.lvl > 0 {
 		// someone will flush for us
 		_, err := w.bw.Write(data)
 		if err != nil {
-			w.err = err
+			w.setError(err)
 		}
 		return err
 	}
@@ -74,28 +80,54 @@ func (w *Writer) writeLine(data []byte) error {
 		// buffer not empty - write through it
 		_, err := w.bw.Write(data)
 		if err != nil {
-			w.err = err
+			w.setError(err)
 			return err
 		}
 		return w.flush()
 	}
 	// empty buffer - write directly
 	_, err := w.w.Write(data)
-	if w.err != nil {
-		w.err = err
+	if err != nil {
+		w.setError(err)
 	}
 	return err
 }
 
 // WriteLine writes a single protocol message.
 func (w *Writer) WriteLine(data []byte) error {
+	if err := w.Err(); err != nil {
+		return err
+	}
 	w.mu.Lock()
 	defer w.mu.Unlock()
 	return w.writeLine(data)
 }
 
+func (w *Writer) startOrWrite(data []byte) (bool, error) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	if err := w.err; err != nil {
+		return false, err
+	}
+	_, err := w.bw.Write(data)
+	if err != nil {
+		w.setError(err)
+		return false, err
+	}
+	if w.lvl > 0 {
+		// someone will flush for us
+		return false, nil
+	}
+	// batch
+	w.lvl++
+	return true, nil
+}
+
 // StartBatch starts a batch of messages. Caller should call EndBatch to flush the buffer.
 func (w *Writer) StartBatch() error {
+	if err := w.Err(); err != nil {
+		return err
+	}
 	w.mu.Lock()
 	w.lvl++
 	err := w.err
@@ -125,42 +157,38 @@ func NewAsyncWriter(w io.Writer) *AsyncWriter {
 
 type AsyncWriter struct {
 	*Writer
+	schedule uint32 // atomic
 
 	amu        sync.Mutex
-	schedule   chan<- struct{}
 	unschedule chan<- struct{}
 }
 
 // WriteLineAsync writes a single protocol message. The message won't be written immediately
 // and will be batched with other similar messages.
 func (w *AsyncWriter) WriteLineAsync(data []byte) error {
+	if err := w.Err(); err != nil {
+		return err
+	}
+
 	w.amu.Lock()
 	defer w.amu.Unlock()
 
-	if w.schedule != nil {
-		// batch already started
+	if w.unschedule != nil {
+		// routine already started
 		err := w.Writer.WriteLine(data)
-		// wake flush routine if it's blocked
-		select {
-		case w.schedule <- struct{}{}:
-		default:
-		}
+		atomic.AddUint32(&w.schedule, 1)
 		return err
 	}
 
-	err := w.Writer.StartBatch()
+	batch, err := w.Writer.startOrWrite(data)
 	if err != nil {
 		return err
-	}
-	err = w.Writer.WriteLine(data)
-	if err != nil {
-		_ = w.Writer.EndBatch(false)
-		return err
+	} else if !batch {
+		return nil
 	}
 
-	re := make(chan struct{}, 1)
 	un := make(chan struct{})
-	w.schedule = re
+	atomic.StoreUint32(&w.schedule, 0)
 	w.unschedule = un
 
 	go func() {
@@ -172,19 +200,30 @@ func (w *AsyncWriter) WriteLineAsync(data []byte) error {
 			case <-un:
 				return
 			case <-timer.C:
+				// check if more writes were scheduled during the sleep
+				if v := atomic.LoadUint32(&w.schedule); v != 0 {
+					// sleep more, let others to fill and flush the buffer
+					atomic.CompareAndSwapUint32(&w.schedule, v, 0)
+					timer.Reset(delay)
+					continue
+				}
 				w.amu.Lock()
+				if v := atomic.LoadUint32(&w.schedule); v != 0 {
+					w.amu.Unlock()
+					atomic.CompareAndSwapUint32(&w.schedule, v, 0)
+					timer.Reset(delay)
+					continue
+				}
 				// we may have missed the unschedule event
 				select {
 				case <-un:
 				default:
 					_ = w.Writer.EndBatch(false)
-					w.schedule = nil
+					atomic.StoreUint32(&w.schedule, 0)
 					w.unschedule = nil
 				}
 				w.amu.Unlock()
 				return
-			case <-re:
-				timer.Reset(delay)
 			}
 		}
 	}()
@@ -193,14 +232,18 @@ func (w *AsyncWriter) WriteLineAsync(data []byte) error {
 
 // Flush waits for all async writes to complete and forces the flush of internal buffers.
 func (w *AsyncWriter) Flush() error {
+	if err := w.Err(); err != nil {
+		return err
+	}
+
 	w.amu.Lock()
 	defer w.amu.Unlock()
-	if w.schedule == nil {
+	if w.unschedule == nil {
 		return w.Writer.Flush()
 	}
 	// routine will now exit, we don't have to wait for it
 	close(w.unschedule)
-	w.schedule = nil
+	atomic.StoreUint32(&w.schedule, 0)
 	w.unschedule = nil
 	if err := w.Writer.EndBatch(true); err != nil {
 		return err

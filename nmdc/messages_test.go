@@ -476,3 +476,18 @@ func TestMarshal(t *testing.T) {
 		})
 	}
 }
+
+func BenchmarkUnmarshal(b *testing.B) {
+	for _, c := range casesUnmarshal {
+		b.Run(c.name, func(b *testing.B) {
+			data := []byte(c.data)
+			for i := 0; i < b.N; i++ {
+				m := NewMessage(c.typ)
+				err := m.UnmarshalNMDC(nil, data)
+				if err != nil {
+					b.Fatal(err)
+				}
+			}
+		})
+	}
+}

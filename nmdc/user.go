@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
-	"strings"
 
 	"github.com/direct-connect/go-dc"
 )
@@ -168,12 +167,13 @@ func (m *MyINFO) MarshalNMDC(enc *TextEncoder, buf *bytes.Buffer) error {
 }
 
 func (m *MyINFO) UnmarshalNMDC(dec *TextDecoder, data []byte) error {
-	if !bytes.HasPrefix(data, []byte("$ALL ")) {
+	const infoPref = "$ALL "
+	if !bytes.HasPrefix(data, []byte(infoPref)) {
 		return errors.New("invalid info command: wrong prefix")
 	}
-	data = bytes.TrimPrefix(data, []byte("$ALL "))
+	data = data[len(infoPref):]
 
-	i := bytes.Index(data, []byte(" "))
+	i := bytes.IndexByte(data, ' ')
 	if i < 0 {
 		return errors.New("invalid info command: no separators")
 	}
@@ -184,23 +184,28 @@ func (m *MyINFO) UnmarshalNMDC(dec *TextDecoder, data []byte) error {
 	data = data[i+1:]
 	m.Name = string(name)
 
-	l := len(data)
-	fields := bytes.SplitN(data[:l-1], []byte("$"), 6)
-	if len(fields) != 5 {
+	n := bytes.Count(data, []byte{'$'})
+	if n != 5 {
 		return fmt.Errorf("invalid info command: %q", string(data))
 	}
 
 	var field []byte
 	next := func() {
-		field = fields[0]
-		fields = fields[1:]
+		i := bytes.IndexByte(data, '$')
+		if i < 0 {
+			field = data
+			data = nil
+		} else {
+			field = data[:i]
+			data = data[i+1:]
+		}
 	}
 
 	next()
 	m.Mode = UserModeUnknown
 	hasTag := false
 	var desc []byte
-	i = bytes.Index(field, []byte("<"))
+	i = bytes.IndexByte(field, '<')
 	if i < 0 {
 		desc = field
 	} else {
@@ -247,86 +252,100 @@ func (m *MyINFO) UnmarshalNMDC(dec *TextDecoder, data []byte) error {
 	next()
 	if len(field) != 0 {
 		// TODO: add strict mode that will verify this
-		size, _ := strconv.ParseUint(string(bytes.TrimSpace(field)), 10, 64)
+		size, _ := parseUin64Trim(field)
 		m.ShareSize = size
 	}
 	return nil
 }
 
 func (m *MyINFO) unmarshalTag(tag []byte) error {
-	var (
-		client []byte
-		tags   [][]byte
-	)
+	var client []byte
 	i := bytes.Index(tag, []byte(" V:"))
 	if i < 0 {
 		i = bytes.Index(tag, []byte(" v:"))
 	}
-	if i < 0 {
-		tags = bytes.Split(tag, []byte(","))
-	} else {
+	if i >= 0 {
 		client = tag[:i]
-		tags = bytes.Split(tag[i+1:], []byte(","))
+		tag = tag[i+1:]
 	}
 	var err error
-	extra := make(map[string]string)
-	for r, field := range tags {
+	m.Extra = nil
+	for r := 0; len(tag) > 0; r++ {
+		i = bytes.IndexByte(tag, ',')
+		field := tag
+		if i >= 0 {
+			field = tag[:i]
+			tag = tag[i+1:]
+		} else {
+			tag = nil
+		}
 		if len(field) == 0 {
 			continue
 		}
-		i = bytes.Index(field, []byte(":"))
-		if i < 0 && r < 1 {
+		i = bytes.IndexByte(field, ':')
+		if r == 0 && i < 0 {
 			client = field
 			continue
 		}
-		if i < 0 {
-			return fmt.Errorf("unknown field in tag: %q", field)
+		if i <= 0 {
+			return fmt.Errorf("unknown field name in tag: %q", field)
 		}
-		key := string(field[:i])
+		bkey := field[:i]
 		val := field[i+1:]
-		switch key {
-		case "V", "v":
+		if len(bkey) != 1 {
+			if m.Extra == nil {
+				m.Extra = make(map[string]string)
+			}
+			m.Extra[string(bkey)] = string(val)
+			continue
+		}
+		ckey := bkey[0]
+		if ckey > 'Z' {
+			ckey -= 'a' - 'A'
+		}
+		switch ckey {
+		case 'V':
 			m.Client.Version = string(val)
-		case "M", "m":
+		case 'M':
 			if len(val) == 1 {
 				m.Mode = UserMode(val[0])
 			} else {
 				m.Mode = UserModeUnknown
 			}
-		case "H", "h":
+		case 'H':
 			if len(val) == 0 {
 				m.HubsNormal = 1
 				continue
 			}
-			hubs := strings.SplitN(string(val), "/", 4)
-			if len(hubs) != 3 {
+			hubs, ok := splitN(val, '/', 3)
+			if !ok {
 				return fmt.Errorf("invalid hubs counts: %q", string(val))
 			}
-			m.HubsNormal, err = strconv.Atoi(strings.TrimSpace(hubs[0]))
+			m.HubsNormal, err = atoiTrim(hubs[0])
 			if err != nil {
 				return fmt.Errorf("invalid info hubs normal: %v", err)
 			}
-			m.HubsRegistered, err = strconv.Atoi(strings.TrimSpace(hubs[1]))
+			m.HubsRegistered, err = atoiTrim(hubs[1])
 			if err != nil {
 				return fmt.Errorf("invalid info hubs registered: %v", err)
 			}
-			m.HubsOperator, err = strconv.Atoi(strings.TrimSpace(hubs[2]))
+			m.HubsOperator, err = atoiTrim(hubs[2])
 			if err != nil {
 				return fmt.Errorf("invalid info hubs operator: %v", err)
 			}
-		case "S", "s":
-			m.Slots, err = strconv.Atoi(string(bytes.TrimSpace(val)))
+		case 'S':
+			m.Slots, err = atoiTrim(val)
 			if err != nil {
 				return fmt.Errorf("invalid slots: %q", string(val))
 			}
 		default:
-			extra[key] = string(val)
+			if m.Extra == nil {
+				m.Extra = make(map[string]string)
+			}
+			m.Extra[string(ckey)] = string(val)
 		}
 	}
 	m.Client.Name = string(client)
-	if len(extra) != 0 {
-		m.Extra = extra
-	}
 	return nil
 }
 

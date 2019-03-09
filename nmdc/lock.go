@@ -60,7 +60,7 @@ func (m *Lock) UnmarshalNMDC(_ *TextDecoder, data []byte) error {
 		m.NoExt = false
 		data = data[len(extLockPref):]
 	}
-	i := bytes.Index(data, []byte(" "))
+	i := bytes.IndexByte(data, ' ')
 	if i < 0 {
 		m.Lock = string(data)
 		return nil
@@ -68,13 +68,15 @@ func (m *Lock) UnmarshalNMDC(_ *TextDecoder, data []byte) error {
 	m.Lock = string(data[:i])
 
 	data = data[i+1:]
-	if bytes.HasPrefix(data, []byte("Pk=")) {
-		data = bytes.TrimPrefix(data, []byte("Pk="))
+	const prefPk = "Pk="
+	if bytes.HasPrefix(data, []byte(prefPk)) {
+		data = data[len(prefPk):]
 	}
-	i = bytes.Index(data, []byte("Ref="))
+	const prefRef = "Ref="
+	i = bytes.Index(data, []byte(prefRef))
 	if i >= 0 {
 		m.PK = string(data[:i])
-		m.Ref = string(data[i+4:])
+		m.Ref = string(data[i+len(prefRef):])
 	} else {
 		m.PK = string(data)
 	}

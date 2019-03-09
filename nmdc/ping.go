@@ -108,25 +108,25 @@ func (m *HubINFO) UnmarshalNMDC(dec *TextDecoder, data []byte) error {
 			}
 			m.Desc = string(s)
 		case 3:
-			i1, err := strconv.Atoi(strings.TrimSpace(string(field)))
+			i1, err := atoiTrim(field)
 			if err != nil {
 				return errors.New("invalid i1")
 			}
 			m.I1 = i1
 		case 4:
-			i2, err := strconv.Atoi(strings.TrimSpace(string(field)))
+			i2, err := atoiTrim(field)
 			if err != nil {
 				return errors.New("invalid i2")
 			}
 			m.I2 = i2
 		case 5:
-			i3, err := strconv.Atoi(strings.TrimSpace(string(field)))
+			i3, err := atoiTrim(field)
 			if err != nil {
 				return errors.New("invalid i3")
 			}
 			m.I3 = i3
 		case 6:
-			i4, err := strconv.Atoi(strings.TrimSpace(string(field)))
+			i4, err := atoiTrim(field)
 			if err != nil {
 				return errors.New("invalid i4")
 			}
@@ -134,7 +134,7 @@ func (m *HubINFO) UnmarshalNMDC(dec *TextDecoder, data []byte) error {
 		case 7:
 			soft := string(field)
 			m.Soft.Name = soft
-			if i := strings.LastIndex(soft, " "); i >= 0 {
+			if i := strings.LastIndexByte(soft, ' '); i >= 0 {
 				m.Soft.Name = soft[:i]
 				m.Soft.Version = soft[i+1:]
 			}

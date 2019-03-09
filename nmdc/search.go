@@ -95,12 +95,14 @@ func (m *Search) MarshalNMDC(enc *TextEncoder, buf *bytes.Buffer) error {
 }
 
 func (m *Search) UnmarshalNMDC(dec *TextDecoder, data []byte) error {
-	fields := bytes.SplitN(data, []byte(" "), 3)
-	if len(fields) != 2 {
+	i := bytes.IndexByte(data, ' ')
+	if i < 0 {
 		return errors.New("invalid search command")
 	}
+	field0 := data[:i]
+	field1 := data[i+1:]
 	const namePref = "Hub:"
-	if val := fields[0]; bytes.HasPrefix(val, []byte(namePref)) {
+	if val := field0; bytes.HasPrefix(val, []byte(namePref)) {
 		var name Name
 		err := name.UnmarshalNMDC(dec, val[len(namePref):])
 		if err != nil {
@@ -108,14 +110,14 @@ func (m *Search) UnmarshalNMDC(dec *TextDecoder, data []byte) error {
 		}
 		m.User = string(name)
 	} else {
-		m.Address = string(fields[0])
+		m.Address = string(field0)
 	}
-	return m.unmarshalString(dec, fields[1])
+	return m.unmarshalString(dec, field1)
 }
 
 func (m *Search) unmarshalString(dec *TextDecoder, data []byte) error {
-	fields := bytes.SplitN(data, []byte("?"), 6)
-	if len(fields) != 5 {
+	fields, ok := splitN(data, '?', 5)
+	if !ok {
 		return errors.New("invalid search string")
 	}
 	var field []byte
@@ -140,7 +142,7 @@ func (m *Search) unmarshalString(dec *TextDecoder, data []byte) error {
 
 	next()
 	if len(field) != 0 {
-		m.Size, err = strconv.ParseUint(string(bytes.TrimSpace(field)), 10, 64)
+		m.Size, err = parseUin64Trim(field)
 		if err != nil {
 			return err
 		}
@@ -251,7 +253,7 @@ func (m *SR) MarshalNMDC(enc *TextEncoder, buf *bytes.Buffer) error {
 }
 
 func (m *SR) UnmarshalNMDC(dec *TextDecoder, data []byte) error {
-	i := bytes.Index(data, []byte(" "))
+	i := bytes.IndexByte(data, ' ')
 	if i < 0 {
 		return errors.New("invalid SR command: missing name")
 	}
@@ -263,7 +265,7 @@ func (m *SR) UnmarshalNMDC(dec *TextDecoder, data []byte) error {
 	data = data[i+1:]
 	m.From = string(name)
 
-	i = bytes.Index(data, []byte(" "))
+	i = bytes.IndexByte(data, ' ')
 	if i < 0 {
 		return errors.New("invalid SR command: missing size")
 	}
@@ -271,12 +273,12 @@ func (m *SR) UnmarshalNMDC(dec *TextDecoder, data []byte) error {
 	data = data[i+1:]
 
 	var path String
-	if i = bytes.Index(res, []byte{srSep}); i >= 0 {
+	if i = bytes.IndexByte(res, srSep); i >= 0 {
 		if err := path.UnmarshalNMDC(dec, res[:i]); err != nil {
 			return err
 		}
 		m.Path = strings.Split(string(path), "\\")
-		m.Size, err = strconv.ParseUint(strings.TrimSpace(string(res[i+1:])), 10, 64)
+		m.Size, err = parseUin64Trim(res[i+1:])
 		if err != nil {
 			return err
 		}
@@ -288,22 +290,22 @@ func (m *SR) UnmarshalNMDC(dec *TextDecoder, data []byte) error {
 		m.IsDir = true
 	}
 
-	i = bytes.Index(data, []byte{srSep})
+	i = bytes.IndexByte(data, srSep)
 	if i < 0 {
 		return errors.New("invalid SR command: missing slots")
 	}
 	res = data[:i]
 	data = data[i+1:]
 
-	i = bytes.Index(res, []byte("/"))
+	i = bytes.IndexByte(res, '/')
 	if i < 0 {
 		return errors.New("invalid SR command: missing slots separator")
 	}
-	m.FreeSlots, err = strconv.Atoi(string(bytes.TrimSpace(res[:i])))
+	m.FreeSlots, err = atoiTrim(res[:i])
 	if err != nil {
 		return err
 	}
-	m.TotalSlots, err = strconv.Atoi(string(bytes.TrimSpace(res[i+1:])))
+	m.TotalSlots, err = atoiTrim(res[i+1:])
 	if err != nil {
 		return err
 	}
@@ -328,7 +330,7 @@ func (m *SR) UnmarshalNMDC(dec *TextDecoder, data []byte) error {
 		}
 		m.HubName = string(s)
 	}
-	i = bytes.Index(data, []byte(")"))
+	i = bytes.IndexByte(data, ')')
 	if i < 0 {
 		return errors.New("invalid SR command: missing hub address")
 	}

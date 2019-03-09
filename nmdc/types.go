@@ -50,9 +50,27 @@ func EscapeName(s string) string {
 
 // Unescape string value.
 func Unescape(s string) string {
-	s = legacyUnescaper.Replace(s)
+	if strings.Contains(s, "/%DCN") {
+		s = legacyUnescaper.Replace(s)
+	}
 	s = html.UnescapeString(s)
 	return s
+}
+
+func UnescapeBytes(b []byte) []byte {
+	h := bytes.IndexByte(b, '&') >= 0
+	d := bytes.Contains(b, []byte("/%DCN"))
+	if !h && !d {
+		return b
+	}
+	s := string(b)
+	if d {
+		s = legacyUnescaper.Replace(s)
+	}
+	if h {
+		s = html.UnescapeString(s)
+	}
+	return []byte(s)
 }
 
 type TTH = tiger.Hash
@@ -100,18 +118,18 @@ func (s *Name) UnmarshalNMDC(dec *TextDecoder, data []byte) error {
 	} else if bytes.ContainsAny(data, invalidCharsName) {
 		return fmt.Errorf("invalid characters in name: %q", string(data))
 	}
-	str := Unescape(string(data))
+	data = UnescapeBytes(data)
 	if dec != nil {
 		var err error
-		str, err = dec.String(str)
+		data, err = dec.Bytes(data)
 		if err != nil {
 			return err
 		}
 	}
-	if !utf8.ValidString(str) {
-		return &errUnknownEncoding{text: []byte(str)}
+	if !utf8.Valid(data) {
+		return &errUnknownEncoding{text: data}
 	}
-	*s = Name(str)
+	*s = Name(data)
 	return nil
 }
 
@@ -119,7 +137,7 @@ func (s *Name) UnmarshalNMDC(dec *TextDecoder, data []byte) error {
 type String string
 
 func (s String) MarshalNMDC(enc *TextEncoder, buf *bytes.Buffer) error {
-	if strings.ContainsAny(string(s), "\x00") {
+	if strings.Contains(string(s), "\x00") {
 		return errors.New("invalid characters in text")
 	}
 	str := string(s)
@@ -136,20 +154,20 @@ func (s String) MarshalNMDC(enc *TextEncoder, buf *bytes.Buffer) error {
 }
 
 func (s *String) UnmarshalNMDC(dec *TextDecoder, data []byte) error {
-	if bytes.ContainsAny(data, "\x00") {
+	if bytes.Contains(data, []byte{0x00}) {
 		return errors.New("invalid characters in text")
 	}
-	str := Unescape(string(data))
+	data = UnescapeBytes(data)
 	if dec != nil {
 		var err error
-		str, err = dec.String(str)
+		data, err = dec.Bytes(data)
 		if err != nil {
 			return err
 		}
 	}
-	if !utf8.ValidString(str) {
-		return &errUnknownEncoding{text: []byte(str)}
+	if !utf8.Valid(data) {
+		return &errUnknownEncoding{text: data}
 	}
-	*s = String(str)
+	*s = String(data)
 	return nil
 }

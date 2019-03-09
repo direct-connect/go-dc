@@ -33,7 +33,7 @@ func (m *ConnectToMe) MarshalNMDC(enc *TextEncoder, buf *bytes.Buffer) error {
 }
 
 func (m *ConnectToMe) UnmarshalNMDC(dec *TextDecoder, data []byte) error {
-	i := bytes.Index(data, []byte(" "))
+	i := bytes.IndexByte(data, ' ')
 	if i < 0 {
 		return errors.New("invalid ConnectToMe command")
 	}
@@ -72,7 +72,7 @@ func (m *RevConnectToMe) MarshalNMDC(enc *TextEncoder, buf *bytes.Buffer) error 
 }
 
 func (m *RevConnectToMe) UnmarshalNMDC(dec *TextDecoder, data []byte) error {
-	i := bytes.Index(data, []byte(" "))
+	i := bytes.IndexByte(data, ' ')
 	if i < 0 {
 		return errors.New("invalid RevConnectToMe command")
 	}

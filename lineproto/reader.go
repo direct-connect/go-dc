@@ -82,17 +82,17 @@ func (r *Reader) discard(n int) {
 // readUntil reads a byte slice until the delimiter, up to max bytes.
 // It returns a newly allocated slice with a delimiter and reads bytes and the delimiter
 // from the reader.
-func (r *Reader) readUntil(delim string, max int) ([]byte, error) {
+func (r *Reader) readUntil(delim byte, max int) ([]byte, error) {
 	r.mbuf.Reset()
 	for {
 		b, err := r.peek()
 		if err != nil {
 			return nil, err
 		}
-		i := bytes.Index(b, []byte(delim))
+		i := bytes.IndexByte(b, delim)
 		if i >= 0 {
-			r.mbuf.Write(b[:i+len(delim)])
-			r.discard(i + len(delim))
+			r.mbuf.Write(b[:i+1])
+			r.discard(i + 1)
 			return r.mbuf.Bytes(), nil
 		}
 		if r.mbuf.Len()+len(b) > max {
@@ -115,7 +115,7 @@ func (r *Reader) ReadLine() ([]byte, error) {
 		return nil, err
 	}
 	for {
-		data, err := r.readUntil(string(r.delim), r.maxLine)
+		data, err := r.readUntil(r.delim, r.maxLine)
 		if err == errValueIsTooLong {
 			r.err = &ErrProtocolViolation{
 				Err: fmt.Errorf("cannot read message: %v", err),

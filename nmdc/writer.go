@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"io"
 	"sync"
+	"sync/atomic"
 
 	"github.com/direct-connect/go-dc/lineproto"
 )
@@ -22,23 +23,24 @@ type Writer struct {
 	// The function may return (false, nil) to skip writing the message.
 	OnMessage func(m Message) (bool, error)
 
+	encNolock atomic.Value // synced with enc
+
 	mu   sync.Mutex
-	mbuf bytes.Buffer
 	enc  *TextEncoder
+	mbuf bytes.Buffer
 }
 
 // Encoder returns current encoder.
 func (w *Writer) Encoder() *TextEncoder {
-	w.mu.Lock()
-	enc := w.enc
-	w.mu.Unlock()
-	return enc
+	v, _ := w.encNolock.Load().(*TextEncoder)
+	return v
 }
 
 // SetEncoder sets a text encoding used to write messages.
 func (w *Writer) SetEncoder(enc *TextEncoder) {
 	w.mu.Lock()
 	w.enc = enc
+	w.encNolock.Store(enc)
 	w.mu.Unlock()
 }
 
