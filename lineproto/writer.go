@@ -16,6 +16,9 @@ func NewWriter(w io.Writer) *Writer {
 
 // Writer is safe for concurrent use.
 type Writer struct {
+	// OnLine is called each time a raw protocol message is written.
+	OnLine func(line []byte) error
+
 	mu  sync.Mutex
 	w   io.Writer
 	bw  *bufio.Writer
@@ -42,6 +45,12 @@ func (w *Writer) flush() error {
 func (w *Writer) writeLine(data []byte) error {
 	if w.err != nil {
 		return w.err
+	}
+	if w.OnLine != nil {
+		if err := w.OnLine(data); err != nil {
+			w.err = err
+			return err
+		}
 	}
 	if w.lvl != 0 {
 		// someone will flush for us

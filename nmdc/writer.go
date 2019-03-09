@@ -18,6 +18,10 @@ func NewWriter(w io.Writer) *Writer {
 type Writer struct {
 	*lineproto.AsyncWriter
 
+	// OnMessage is called each time a NMDC protocol message is written.
+	// The function may return (false, nil) to skip writing the message.
+	OnMessage func(m Message) (bool, error)
+
 	mu   sync.Mutex
 	mbuf bytes.Buffer
 	enc  *TextEncoder
@@ -45,6 +49,11 @@ func (w *Writer) WriteMsg(m Message) error {
 	if err := w.Writer.Err(); err != nil {
 		return err
 	}
+	if w.OnMessage != nil {
+		if ok, err := w.OnMessage(m); err != nil || !ok {
+			return err
+		}
+	}
 	w.mbuf.Reset()
 	err := MarshalTo(w.enc, &w.mbuf, m)
 	if err != nil {
@@ -61,6 +70,11 @@ func (w *Writer) WriteMsgAsync(m Message) error {
 	defer w.mu.Unlock()
 	if err := w.Writer.Err(); err != nil {
 		return err
+	}
+	if w.OnMessage != nil {
+		if ok, err := w.OnMessage(m); err != nil || !ok {
+			return err
+		}
 	}
 	w.mbuf.Reset()
 	err := MarshalTo(w.enc, &w.mbuf, m)
