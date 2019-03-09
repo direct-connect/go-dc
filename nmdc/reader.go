@@ -5,17 +5,16 @@ import (
 	"errors"
 	"fmt"
 	"io"
+
+	"github.com/direct-connect/go-dc/lineproto"
 )
 
 const (
-	readBuf    = 4096
 	maxName    = 256
 	maxCmdName = 32
-	maxLine    = readBuf * 8
 )
 
 var (
-	errValueIsTooLong  = errors.New("value is too long")
 	errExpectedCommand = errors.New("nmdc: expected command, got chat message")
 	errExpectedChat    = errors.New("nmdc: chat message, got command")
 )
@@ -29,13 +28,7 @@ func (e *ErrUnexpectedCommand) Error() string {
 	return fmt.Sprintf("nmdc: expected %q, got %q", e.Expected, e.Received.Typ)
 }
 
-type ErrProtocolViolation struct {
-	Err error
-}
-
-func (e *ErrProtocolViolation) Error() string {
-	return fmt.Sprintf("nmdc: protocol error: %v", e.Err)
-}
+type ErrProtocolViolation = lineproto.ErrProtocolViolation
 
 type errUnknownEncoding struct {
 	text []byte
@@ -47,31 +40,19 @@ func (e *errUnknownEncoding) Error() string {
 
 func NewReader(r io.Reader) *Reader {
 	return &Reader{
-		r: r, buf: make([]byte, 0, readBuf),
-		maxLine:    maxLine,
+		Reader:     lineproto.NewReader(r, '|'),
 		maxCmdName: maxCmdName,
 	}
 }
 
 type Reader struct {
-	r   io.Reader
-	err error
+	*lineproto.Reader
 
-	maxLine    int
 	maxCmdName int
-
-	buf  []byte
-	i    int
-	mbuf bytes.Buffer // TODO
 
 	// dec is the current decoder for the text values.
 	// It converts connection encoding to UTF8. Nil value means that connection uses UTF8.
 	dec *TextDecoder
-
-	// OnLine is called each time a raw protocol line is read from the connection.
-	// The buffer will contain a '|' delimiter and is in the connection encoding.
-	// The function may return (false, nil) to ignore the message.
-	OnLine func(line []byte) (bool, error)
 
 	// OnKeepAlive is called when an empty (keep-alive) message is received.
 	OnKeepAlive func() error
@@ -90,11 +71,6 @@ type Reader struct {
 	OnMessage func(m Message) (bool, error)
 }
 
-// SetMaxLine sets a maximal length of the protocol messages in bytes, including the delimiter.
-func (r *Reader) SetMaxLine(n int) {
-	r.maxLine = n
-}
-
 // SetMaxCmdName sets a maximal length of the protocol command name in bytes.
 func (r *Reader) SetMaxCmdName(n int) {
 	r.maxCmdName = n
@@ -103,85 +79,6 @@ func (r *Reader) SetMaxCmdName(n int) {
 // SetDecoder sets a text decoder for the connection.
 func (r *Reader) SetDecoder(dec *TextDecoder) {
 	r.dec = dec
-}
-
-func (r *Reader) peek() ([]byte, error) {
-	if r.i < len(r.buf) {
-		return r.buf[r.i:], nil
-	}
-	r.i = 0
-	r.buf = r.buf[:cap(r.buf)]
-	n, err := r.r.Read(r.buf)
-	r.buf = r.buf[:n]
-	return r.buf, err
-}
-
-func (r *Reader) discard(n int) {
-	if n < 0 {
-		r.i += len(r.buf)
-	} else {
-		r.i += n
-	}
-}
-
-// readUntil reads a byte slice until the delimiter, up to max bytes.
-// It returns a newly allocated slice with a delimiter and reads bytes and the delimiter
-// from the reader.
-func (r *Reader) readUntil(delim string, max int) ([]byte, error) {
-	r.mbuf.Reset()
-	for {
-		b, err := r.peek()
-		if err != nil {
-			return nil, err
-		}
-		i := bytes.Index(b, []byte(delim))
-		if i >= 0 {
-			r.mbuf.Write(b[:i+len(delim)])
-			r.discard(i + len(delim))
-			return r.mbuf.Bytes(), nil
-		}
-		if r.mbuf.Len()+len(b) > max {
-			return nil, errValueIsTooLong
-		}
-		r.mbuf.Write(b)
-		r.discard(-1)
-	}
-}
-
-// ReadLine reads a single raw message until the delimiter '|'. The returned buffer
-// contains a '|' delimiter and is in the connection encoding. The buffer is only valid
-// until the next call to Read or ReadLine.
-func (r *Reader) ReadLine() ([]byte, error) {
-	if err := r.err; err != nil {
-		return nil, err
-	}
-	for {
-		data, err := r.readUntil("|", r.maxLine)
-		if err == errValueIsTooLong {
-			r.err = &ErrProtocolViolation{
-				Err: fmt.Errorf("cannot read message: %v", err),
-			}
-			return nil, r.err
-		} else if err != nil {
-			r.err = err
-			return nil, err
-		}
-		if r.OnLine != nil {
-			if ok, err := r.OnLine(data); err != nil {
-				r.err = err
-				return nil, err
-			} else if !ok {
-				continue // drop
-			}
-		}
-		if bytes.ContainsAny(data, "\x00") {
-			r.err = &ErrProtocolViolation{
-				Err: errors.New("message should not contain null characters"),
-			}
-			return nil, r.err
-		}
-		return data, nil
-	}
 }
 
 // ReadMsg reads a single message.
@@ -207,6 +104,11 @@ func (r *Reader) readMsgTo(ptr *Message) error {
 		line, err := r.ReadLine()
 		if err != nil {
 			return err
+		}
+		if bytes.ContainsAny(line, "\x00") {
+			return &ErrProtocolViolation{
+				Err: errors.New("message should not contain null characters"),
+			}
 		}
 		line = bytes.TrimSuffix(line, []byte("|"))
 		if len(line) == 0 {
