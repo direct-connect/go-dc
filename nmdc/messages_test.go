@@ -338,7 +338,8 @@ var casesUnmarshal = []struct {
 		data: "User6 dir1\\dir2\\pictures 0/4\x05Testhub (192.168.1.1)",
 		msg: &SR{
 			From:       "User6",
-			DirName:    "dir1/dir2/pictures",
+			Path:       []string{"dir1", "dir2", "pictures"},
+			IsDir:      true,
 			TotalSlots: 4,
 			HubName:    "Testhub",
 			HubAddress: "192.168.1.1",
@@ -347,11 +348,11 @@ var casesUnmarshal = []struct {
 	{
 		typ:  "SR",
 		name: "file result",
-		data: "User1 dir\\ponies.txt\x05437 3/4\x05Testhub (192.168.1.1:411)\x05User2",
+		data: "User1 dir\\file.txt\x05437 3/4\x05Testhub (192.168.1.1:411)\x05User2",
 		msg: &SR{
 			From:       "User1",
-			FileName:   "dir/ponies.txt",
-			FileSize:   437,
+			Path:       []string{"dir", "file.txt"},
+			Size:       437,
 			FreeSlots:  3,
 			TotalSlots: 4,
 			HubName:    "Testhub",
@@ -365,8 +366,8 @@ var casesUnmarshal = []struct {
 		data: "User1 Linux\\kubuntu-18.04-desktop-amd64.iso\x051868038144 3/3\x05TTH:BNQGWMXKUIAFAU3TV32I5U6SKNYMQBBNH4FELNQ (192.168.1.1:411)\x05User2",
 		msg: &SR{
 			From:       "User1",
-			FileName:   "Linux/kubuntu-18.04-desktop-amd64.iso",
-			FileSize:   1868038144,
+			Path:       []string{"Linux", "kubuntu-18.04-desktop-amd64.iso"},
+			Size:       1868038144,
 			FreeSlots:  3,
 			TotalSlots: 3,
 			TTH:        getTHPointer("BNQGWMXKUIAFAU3TV32I5U6SKNYMQBBNH4FELNQ"),

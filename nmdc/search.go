@@ -189,12 +189,10 @@ func unmarshalBoolFlag(data []byte) (bool, error) {
 }
 
 type SR struct {
-	From string
-
-	FileName string // TODO: Path
-	DirName  string // TODO: Path
-
-	FileSize   uint64
+	From       string
+	Path       []string
+	IsDir      bool
+	Size       uint64 // only set for files
 	FreeSlots  int
 	TotalSlots int
 	HubName    string
@@ -213,25 +211,17 @@ func (m *SR) MarshalNMDC(enc *TextEncoder, buf *bytes.Buffer) error {
 	if err := Name(m.From).MarshalNMDC(enc, buf); err != nil {
 		return err
 	}
-	if m.FileName == "" && m.DirName == "" {
-		return errors.New("invalid SR command: empty name and path")
+	if len(m.Path) == 0 {
+		return errors.New("invalid SR command: empty path")
 	}
-
-	var path string
-	if m.FileName != "" {
-		path = m.FileName
-	} else {
-		path = m.DirName
-	}
-	path = strings.Replace(path, "/", "\\", -1)
-
+	path := strings.Join(m.Path, "\\")
 	buf.WriteByte(' ')
 	if err := String(path).MarshalNMDC(enc, buf); err != nil {
 		return err
 	}
-	if m.FileName != "" {
+	if !m.IsDir {
 		buf.WriteByte(srSep)
-		buf.WriteString(strconv.FormatUint(m.FileSize, 10))
+		buf.WriteString(strconv.FormatUint(m.Size, 10))
 	}
 	buf.WriteByte(' ')
 	buf.WriteString(strconv.Itoa(m.FreeSlots))
@@ -285,8 +275,8 @@ func (m *SR) UnmarshalNMDC(dec *TextDecoder, data []byte) error {
 		if err := path.UnmarshalNMDC(dec, res[:i]); err != nil {
 			return err
 		}
-		m.FileName = strings.Replace(string(path), "\\", "/", -1)
-		m.FileSize, err = strconv.ParseUint(strings.TrimSpace(string(res[i+1:])), 10, 64)
+		m.Path = strings.Split(string(path), "\\")
+		m.Size, err = strconv.ParseUint(strings.TrimSpace(string(res[i+1:])), 10, 64)
 		if err != nil {
 			return err
 		}
@@ -294,7 +284,8 @@ func (m *SR) UnmarshalNMDC(dec *TextDecoder, data []byte) error {
 		if err := path.UnmarshalNMDC(dec, res); err != nil {
 			return err
 		}
-		m.DirName = strings.Replace(string(path), "\\", "/", -1)
+		m.Path = strings.Split(string(path), "\\")
+		m.IsDir = true
 	}
 
 	i = bytes.Index(data, []byte{srSep})
