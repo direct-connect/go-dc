@@ -1,0 +1,80 @@
+package nmdc
+
+import "bytes"
+
+func init() {
+	RegisterMessage(&GetNickList{})
+	RegisterMessage(&OpList{})
+	RegisterMessage(&BotList{})
+}
+
+// GetNickList is sent by the client to the hub to retrieve a list of online users.
+//
+// http://nmdc.sourceforge.net/NMDC.html#_getnicklist
+type GetNickList struct {
+	NoArgs
+}
+
+func (*GetNickList) Type() string {
+	return "GetNickList"
+}
+
+// OpList is a list of hub operators.
+//
+// http://nmdc.sourceforge.net/NMDC.html#_oplist
+type OpList struct {
+	Names
+}
+
+func (*OpList) Type() string {
+	return "OpList"
+}
+
+// BotList is a list of bots on the hub. Requires 'BotList' extension.
+//
+// http://nmdc.sourceforge.net/NMDC.html#_botlist
+type BotList struct {
+	Names
+}
+
+func (*BotList) Type() string {
+	return "BotList"
+}
+
+// Names is a list of user names separated by '$$'.
+//
+// See OpList and BotList.
+type Names []string
+
+func (m Names) MarshalNMDC(enc *TextEncoder, buf *bytes.Buffer) error {
+	if len(m) == 0 {
+		buf.WriteString("$$")
+		return nil
+	}
+	for _, name := range m {
+		if err := Name(name).MarshalNMDC(enc, buf); err != nil {
+			return err
+		}
+		buf.WriteString("$$")
+	}
+	return nil
+}
+
+func (m *Names) UnmarshalNMDC(dec *TextDecoder, data []byte) error {
+	if len(data) == 0 {
+		*m = nil
+		return nil
+	}
+	data = bytes.TrimSuffix(data, []byte("$$"))
+	sub := bytes.Split(data, []byte("$$"))
+	list := make([]string, 0, len(sub))
+	for _, b := range sub {
+		var name Name
+		if err := name.UnmarshalNMDC(dec, b); err != nil {
+			return err
+		}
+		list = append(list, string(name))
+	}
+	*m = list
+	return nil
+}

@@ -1,0 +1,320 @@
+package nmdc
+
+import (
+	"bytes"
+	"errors"
+	"fmt"
+	"strconv"
+)
+
+func init() {
+	RegisterMessage(&ChatMessage{})
+	RegisterMessage(&PrivateMessage{})
+	RegisterMessage(&MCTo{})
+	RegisterMessage(&UserCommand{})
+}
+
+type ChatMessage struct {
+	Name string
+	Text string
+}
+
+func (m *ChatMessage) String() string {
+	if m.Name == "" {
+		return m.Text
+	}
+	return "<" + string(m.Name) + "> " + m.Text
+}
+
+func (m *ChatMessage) Type() string {
+	return "" // special case
+}
+
+func (m *ChatMessage) MarshalNMDC(enc *TextEncoder, buf *bytes.Buffer) error {
+	if m.Name != "" {
+		buf.WriteByte('<')
+		err := Name(m.Name).MarshalNMDC(enc, buf)
+		if err != nil {
+			return err
+		}
+		buf.WriteString("> ")
+	}
+	err := String(m.Text).MarshalNMDC(enc, buf)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (m *ChatMessage) UnmarshalNMDC(dec *TextDecoder, data []byte) error {
+	// <user> message text|
+	// or
+	// message text|
+	if len(data) != 0 && data[0] == '<' {
+		data = data[1:]
+		i := bytes.Index(data, []byte("> "))
+		if i < 0 {
+			i = bytes.Index(data, []byte(">"))
+		}
+		if i < 0 {
+			return &ErrProtocolViolation{
+				Err: errors.New("name in chat message should have a closing token"),
+			}
+		}
+		name := data[:i]
+		data = bytes.TrimPrefix(data[i+1:], []byte(" "))
+		if len(name) == 0 {
+			return &ErrProtocolViolation{
+				Err: errors.New("empty name in chat message"),
+			}
+		} else if len(name) > maxName {
+			return &ErrProtocolViolation{
+				Err: errors.New("name in chat message is too long"),
+			}
+		}
+		var sname Name
+		if err := sname.UnmarshalNMDC(dec, name); err != nil {
+			return err
+		}
+		m.Name = string(sname)
+	}
+	var text String
+	if err := text.UnmarshalNMDC(dec, data); err != nil {
+		return err
+	}
+	m.Text = string(text)
+	return nil
+}
+
+type PrivateMessage struct {
+	To, From string
+	Name     string
+	Text     string
+}
+
+func (m *PrivateMessage) Type() string {
+	return "To:"
+}
+
+func (m *PrivateMessage) MarshalNMDC(enc *TextEncoder, buf *bytes.Buffer) error {
+	if err := Name(m.To).MarshalNMDC(enc, buf); err != nil {
+		return err
+	}
+
+	buf.WriteString(" From: ")
+	if err := Name(m.From).MarshalNMDC(enc, buf); err != nil {
+		return err
+	}
+
+	buf.WriteString(" $<")
+	if err := Name(m.Name).MarshalNMDC(enc, buf); err != nil {
+		return err
+	}
+	buf.WriteString("> ")
+
+	if err := String(m.Text).MarshalNMDC(enc, buf); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (m *PrivateMessage) UnmarshalNMDC(dec *TextDecoder, data []byte) error {
+	var name Name
+
+	const fromToken = " From: "
+	i := bytes.Index(data, []byte(fromToken))
+	if i < 0 {
+		return errors.New("invalid To message: no 'from' delimiter")
+	} else if err := name.UnmarshalNMDC(dec, data[:i]); err != nil {
+		return err
+	}
+	data = data[i+len(fromToken):]
+	m.To = string(name)
+
+	const nameTokenS = " $<"
+	i = bytes.Index(data, []byte(nameTokenS))
+	if i < 0 {
+		return errors.New("invalid To message: no name delimiter")
+	} else if err := name.UnmarshalNMDC(dec, data[:i]); err != nil {
+		return err
+	}
+	data = data[i+len(nameTokenS):]
+	m.From = string(name)
+
+	i = bytes.Index(data, []byte("> "))
+	if i < 0 {
+		return errors.New("invalid To message: no name end delimiter")
+	} else if err := name.UnmarshalNMDC(dec, data[:i]); err != nil {
+		return err
+	}
+	text := data[i+2:]
+	m.Name = string(name)
+
+	var s String
+	if err := s.UnmarshalNMDC(dec, text); err != nil {
+		return err
+	}
+	m.Text = string(s)
+	return nil
+}
+
+type MCTo struct {
+	To, From string
+	Text     string
+}
+
+func (*MCTo) Type() string {
+	return "MCTo"
+}
+
+func (m *MCTo) MarshalNMDC(enc *TextEncoder, buf *bytes.Buffer) error {
+	if err := Name(m.To).MarshalNMDC(enc, buf); err != nil {
+		return err
+	}
+
+	buf.WriteString(" $")
+	if err := Name(m.From).MarshalNMDC(enc, buf); err != nil {
+		return err
+	}
+
+	buf.WriteString(" ")
+	if err := String(m.Text).MarshalNMDC(enc, buf); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (m *MCTo) UnmarshalNMDC(dec *TextDecoder, data []byte) error {
+	var name Name
+
+	i := bytes.Index(data, []byte(" $"))
+	if i < 0 {
+		return errors.New("invalid MCTo: no name delimiter")
+	} else if err := name.UnmarshalNMDC(dec, data[:i]); err != nil {
+		return err
+	}
+	data = data[i+2:]
+	m.To = string(name)
+
+	i = bytes.Index(data, []byte(" "))
+	if i < 0 {
+		return errors.New("invalid MCTo: no message delimiter")
+	} else if err := name.UnmarshalNMDC(dec, data[:i]); err != nil {
+		return err
+	}
+	m.From = string(name)
+
+	var s String
+	if err := s.UnmarshalNMDC(dec, data[i+1:]); err != nil {
+		return err
+	}
+	m.Text = string(s)
+	return nil
+}
+
+type UCmdType int
+
+const (
+	TypeSeparator      = UCmdType(0)
+	TypeRaw            = UCmdType(1)
+	TypeRawNickLimited = UCmdType(2)
+	TypeErase          = UCmdType(255)
+)
+
+type UCmdContext int
+
+const (
+	ContextHub      = UCmdContext(1)
+	ContextUser     = UCmdContext(2)
+	ContextSearch   = UCmdContext(4)
+	ContextFileList = UCmdContext(8)
+)
+
+type UserCommand struct {
+	Typ     UCmdType
+	Context UCmdContext
+	Path    []string
+	Command string
+}
+
+func (*UserCommand) Type() string {
+	return "UserCommand"
+}
+
+func (m *UserCommand) MarshalNMDC(enc *TextEncoder, buf *bytes.Buffer) error {
+	buf.Write([]byte(strconv.Itoa(int(m.Typ))))
+	buf.WriteString(" ")
+	buf.Write([]byte(strconv.Itoa(int(m.Context))))
+	if len(m.Path) != 0 {
+		buf.WriteString(" ")
+		for i, s := range m.Path {
+			if i != 0 {
+				buf.WriteString("\\")
+			}
+			if err := String(s).MarshalNMDC(enc, buf); err != nil {
+				return err
+			}
+		}
+	}
+	if m.Command != "" {
+		buf.WriteString(" $")
+		if err := String(m.Command).MarshalNMDC(enc, buf); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (m *UserCommand) UnmarshalNMDC(dec *TextDecoder, data []byte) error {
+	arr := bytes.SplitN(bytes.TrimSpace(data), []byte(" "), 3)
+	if len(arr) < 2 {
+		return errors.New("invalid user command")
+	}
+
+	t, err := strconv.Atoi(string(arr[0]))
+	if err != nil {
+		return fmt.Errorf("invalid type in user command: %q", string(arr[0]))
+	}
+	m.Typ = UCmdType(t)
+
+	if i := bytes.IndexFunc(arr[1], func(r rune) bool {
+		return r < '0' || r > '9'
+	}); i >= 0 {
+		arr[1] = arr[1][:i]
+	}
+	c, err := strconv.Atoi(string(arr[1]))
+	if err != nil {
+		return fmt.Errorf("invalid context in user command: %q", string(arr[1]))
+	}
+	m.Context = UCmdContext(c)
+	if len(arr) == 2 {
+		return nil
+	}
+
+	val := arr[2]
+	i := bytes.Index(val, []byte("$"))
+	if i < 1 {
+		return fmt.Errorf("invalid raw user command: %q", string(data))
+	}
+	path := bytes.TrimRight(val[:i], " ")
+	sub := bytes.Split(path, []byte("\\"))
+	m.Path = make([]string, 0, len(sub))
+	for _, p := range sub {
+		if len(p) == 0 {
+			continue
+		}
+		var s String
+		err := s.UnmarshalNMDC(dec, p)
+		if err != nil {
+			return errors.New("invalid path user command")
+		}
+		m.Path = append(m.Path, string(s))
+	}
+
+	var s String
+	if err := s.UnmarshalNMDC(dec, val[i+1:]); err != nil {
+		return err
+	}
+	m.Command = string(s)
+	return nil
+}
