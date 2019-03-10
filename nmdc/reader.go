@@ -197,13 +197,20 @@ func (r *Reader) readMsgTo(ptr *Message) error {
 		err = out.UnmarshalNMDC(r.dec, args)
 		if r.OnUnknownEncoding != nil {
 			if e, ok := err.(*errUnknownEncoding); ok {
-				dec, err := r.OnUnknownEncoding(e.text)
+				var dec *TextDecoder
+				dec, err = r.OnUnknownEncoding(e.text)
 				if err != nil {
 					return err
-				} else if dec == nil {
-					return e
 				}
-				r.dec = dec
+				if dec == nil {
+					// cannot decode, but asked to continue
+					args = bytes.Map(func(r rune) rune {
+						return r // only need to parse
+					}, args)
+				} else {
+					// switch encoding and decode again
+					r.dec = dec
+				}
 				err = out.UnmarshalNMDC(r.dec, args)
 			}
 		}
