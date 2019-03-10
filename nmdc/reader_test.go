@@ -78,6 +78,16 @@ var casesReader = []struct {
 		},
 	},
 	{
+		name:  "chat",
+		input: "<b>b>> text|",
+		exp: []Message{
+			&ChatMessage{
+				Name: "b>b>",
+				Text: "text",
+			},
+		},
+	},
+	{
 		name:  "empty chat and trailing",
 		input: "<bob>|text" + strings.Repeat(" ", maxName) + "> |",
 		exp: []Message{
@@ -86,6 +96,16 @@ var casesReader = []struct {
 			},
 			&ChatMessage{
 				Text: "text" + strings.Repeat(" ", maxName) + "> ",
+			},
+		},
+	},
+	{
+		name:  "line break and trailing",
+		input: "<bob>\n" + strings.Repeat(" ", maxName) + "> |",
+		exp: []Message{
+			&ChatMessage{
+				Name: "bob",
+				Text: strings.Repeat(" ", maxName) + "> ",
 			},
 		},
 	},
@@ -114,7 +134,7 @@ func TestReader(t *testing.T) {
 			} else {
 				assert.Equal(t, c.err, gerr)
 			}
-			require.Equal(t, c.exp, got)
+			require.Equal(t, c.exp, got, "\n%q\nvs\n%q", c.exp, got)
 		})
 	}
 }

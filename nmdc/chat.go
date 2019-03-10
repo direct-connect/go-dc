@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
+	"unicode"
+	"unicode/utf8"
 )
 
 func init() {
@@ -52,17 +54,33 @@ func (m *ChatMessage) UnmarshalNMDC(dec *TextDecoder, data []byte) error {
 	// message text|
 	if len(data) != 0 && data[0] == '<' {
 		data = data[1:]
-		i := bytes.Index(data, []byte("> "))
-		if i < 0 {
-			i = bytes.IndexByte(data, '>')
-		}
-		if i < 0 {
-			return &ErrProtocolViolation{
-				Err: errors.New("name in chat message should have a closing token"),
+		var (
+			i    int
+			off  = 0
+			base = 0
+		)
+		for base < len(data) {
+			j := bytes.IndexByte(data[base:], '>')
+			if j < 0 {
+				return &ErrProtocolViolation{
+					Err: errors.New("name in chat message should have a closing token"),
+				}
 			}
+			if base+j == len(data)-1 {
+				i = j
+				off = 1
+				break
+			}
+			r, sz := utf8.DecodeRune(data[base+j+1:])
+			if unicode.IsSpace(r) {
+				i = base + j
+				off = sz + 1
+				break
+			}
+			base += j + 1
 		}
 		name := data[:i]
-		data = bytes.TrimPrefix(data[i+1:], []byte(" "))
+		data = data[i+off:]
 		if len(name) == 0 {
 			return &ErrProtocolViolation{
 				Err: errors.New("empty name in chat message"),
