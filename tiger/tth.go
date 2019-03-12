@@ -2,14 +2,39 @@ package tiger
 
 import "io"
 
+const tthBlock = 1024
+
+// Leaves are a sequence of concatenated hashes that can be used to validate
+// the single parts of a certain file.
+type Leaves []Hash
+
+// TreeLeaves computes the TTH leaves of a reader.
+func TreeLeaves(r io.Reader) (lvl Leaves, err error) {
+	buf := make([]byte, tthBlock+1)
+	var n int
+
+	for err != io.EOF {
+		n, err = r.Read(buf[1:])
+		if err != nil && err != io.EOF {
+			return
+		}
+		if n == 0 && len(lvl) > 0 {
+			break
+		}
+		buf[0] = 0x00
+		lvl = append(lvl, HashBytes(buf[:n+1]))
+	}
+	err = nil
+	return
+}
+
 // TreeHash calculates a Tiger Tree Hash of a reader.
 func TreeHash(r io.Reader) (root Hash, err error) {
-	const block = 1024
 	var (
 		n   int
 		lvl []Hash
 	)
-	buf := make([]byte, block+1)
+	buf := make([]byte, tthBlock+1)
 	for err != io.EOF {
 		n, err = r.Read(buf[1:])
 		if err != nil && err != io.EOF {
