@@ -83,9 +83,11 @@ func (h *Hash) FromBase32(s string) error {
 	b, err := base32Enc.DecodeString(s)
 	if err != nil {
 		return err
-	} else if n := copy((*h)[:], b); n != len(h) {
-		return fmt.Errorf("wrong base32 size: %d vs %d", n, len(h))
 	}
+	if len(b) != Size {
+		return fmt.Errorf("wrong base32 encoded size: %d vs %d", len(b), Size)
+	}
+	copy((*h)[:], b)
 	return nil
 }
 
