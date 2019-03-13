@@ -317,6 +317,13 @@ func (m *MyINFO) unmarshalTag(tag []byte) error {
 				m.HubsNormal = 1
 				continue
 			}
+			if !bytes.Contains(val, []byte("/")) {
+				m.HubsNormal, err = atoiTrim(val)
+				if err != nil {
+					return fmt.Errorf("invalid info hubs normal: %v", err)
+				}
+				continue
+			}
 			hubs, ok := splitN(val, '/', 3)
 			if !ok {
 				return fmt.Errorf("invalid hubs counts: %q", string(val))
