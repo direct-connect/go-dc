@@ -81,11 +81,7 @@ func (m *ChatMessage) UnmarshalNMDC(dec *TextDecoder, data []byte) error {
 		}
 		name := data[:i]
 		data = data[i+off:]
-		if len(name) == 0 {
-			return &ErrProtocolViolation{
-				Err: errors.New("empty name in chat message"),
-			}
-		} else if len(name) > maxName {
+		if len(name) > maxName {
 			return &ErrProtocolViolation{
 				Err: errors.New("name in chat message is too long"),
 			}

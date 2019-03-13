@@ -109,6 +109,15 @@ var casesReader = []struct {
 			},
 		},
 	},
+	{
+		name:  "empty name",
+		input: "<> text|",
+		exp: []Message{
+			&ChatMessage{
+				Text: "text",
+			},
+		},
+	},
 }
 
 func TestReader(t *testing.T) {
