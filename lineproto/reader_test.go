@@ -2,8 +2,8 @@ package lineproto
 
 import (
 	"bytes"
-	"testing"
 	"github.com/stretchr/testify/require"
+	"testing"
 )
 
 func TestReader(t *testing.T) {
