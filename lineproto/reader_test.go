@@ -2,8 +2,8 @@ package lineproto
 
 import (
 	"bytes"
-	"reflect"
 	"testing"
+	"github.com/stretchr/testify/require"
 )
 
 func TestReader(t *testing.T) {
@@ -18,30 +18,18 @@ func TestReader(t *testing.T) {
 
 	l1Expected := []byte("$ZOn|")
 	l1, err := r.ReadLine()
-	if err != nil {
-		t.Fatal(err)
-	}
-	if reflect.DeepEqual(l1, l1Expected) == false {
-		t.Fatalf("l1 error: %v vs %v", l1, l1Expected)
-	}
+	require.NoError(t, err)
+	require.Equal(t, l1, l1Expected)
 
 	r.ActivateCompression()
 
 	l2Expected := []byte("$OtherCommand test|")
 	l2, err := r.ReadLine()
-	if err != nil {
-		t.Fatal(err)
-	}
-	if reflect.DeepEqual(l2, l2Expected) == false {
-		t.Fatalf("l2 error: %v vs %v", l2, l2Expected)
-	}
+	require.NoError(t, err)
+	require.Equal(t, l2, l2Expected)
 
 	l3Expected := []byte("$Uncompressed|")
 	l3, err := r.ReadLine()
-	if err != nil {
-		t.Fatal(err)
-	}
-	if reflect.DeepEqual(l3, l3Expected) == false {
-		t.Fatalf("l3 error: %v vs %v", l3, l3Expected)
-	}
+	require.NoError(t, err)
+	require.Equal(t, l3, l3Expected)
 }
