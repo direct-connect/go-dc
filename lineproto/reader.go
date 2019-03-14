@@ -78,7 +78,7 @@ func (c *zlibSwitchableReader) ActivateCompression() error {
 }
 
 // Reader is a line reader that supports the zlib on/off switching procedure
-// required by NMDC hub-to-client and client-to-client connections.
+// required by hub-to-client and client-to-client connections.
 type Reader struct {
 	in    *zlibSwitchableReader
 	delim byte
