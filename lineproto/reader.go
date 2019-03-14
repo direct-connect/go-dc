@@ -83,6 +83,7 @@ type Reader struct {
 	in    *zlibSwitchableReader
 	delim byte
 	mutex sync.Mutex
+	buffer []byte
 
 	// Safe can be set to disable internal mutex.
 	Safe bool
@@ -105,6 +106,7 @@ func NewReader(in io.Reader, delim byte) *Reader {
 	return &Reader{
 		in:    l2,
 		delim: delim,
+		buffer: make([]byte, maxLine),
 	}
 }
 
@@ -117,27 +119,26 @@ func (r *Reader) ReadLine() ([]byte, error) {
 		defer r.mutex.Unlock()
 	}
 
-	buf := make([]byte, maxLine)
 	offset := 0
 	for {
-		if offset >= len(buf) {
+		if offset >= len(r.buffer) {
 			return nil, errorBufferExhausted
 		}
 
 		// read one character at a time
-		read, err := r.in.Read(buf[offset : offset+1])
+		read, err := r.in.Read(r.buffer[offset : offset+1])
 		if read == 0 {
 			return nil, err
 		}
 		offset++
 
-		if buf[offset-1] != r.delim {
+		if r.buffer[offset-1] != r.delim {
 			continue
 		}
 
 		if r.OnLine != nil {
 			// OnLine() error
-			if ok, err := r.OnLine(buf[:offset]); err != nil {
+			if ok, err := r.OnLine(r.buffer[:offset]); err != nil {
 				return nil, err
 
 				// OnLine() commanded to drop buffer
@@ -147,7 +148,7 @@ func (r *Reader) ReadLine() ([]byte, error) {
 			}
 		}
 
-		return buf[:offset], nil
+		return r.buffer[:offset], nil
 	}
 }
 
