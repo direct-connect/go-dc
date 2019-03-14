@@ -2,6 +2,7 @@ package lineproto
 
 import (
 	"bufio"
+	"compress/flate"
 	"compress/zlib"
 	"errors"
 	"fmt"
@@ -15,6 +16,7 @@ const (
 )
 
 var errorBufferExhausted = errors.New("message buffer exhausted")
+var errorZlibAlreadyActive = errors.New("zlib already activated")
 
 type ErrProtocolViolation struct {
 	Err error
@@ -24,62 +26,63 @@ func (e *ErrProtocolViolation) Error() string {
 	return fmt.Sprintf("protocol error: %v", e.Err)
 }
 
-type fullReader interface {
-	io.ByteReader
-	io.Reader
-}
-
 // zlibSwitchableReader is a zlib reader that can be switched on at any time.
-// It requires a io.ByteReader, otherwise zlib adds a bufio reader that
-// messes up the switching phase.
+// the flate.Reader requirement ensures that zlib read only the necessary bytes,
+// leaving the remainings in the previous buffer.
 type zlibSwitchableReader struct {
-	in           fullReader
-	zlibReader   io.ReadCloser
-	activeReader io.Reader
+	r                  flate.Reader
+	zlibReader         io.ReadCloser
+	zlibActive         bool
+	zlibBufferedReader io.ByteReader
 }
 
-func newZlibSwitchableReader(in fullReader) *zlibSwitchableReader {
+func newZlibSwitchableReader(r flate.Reader) *zlibSwitchableReader {
 	return &zlibSwitchableReader{
-		in:           in,
-		activeReader: in,
+		r: r,
 	}
-}
-
-func (c *zlibSwitchableReader) Read(buf []byte) (int, error) {
-	n, err := c.activeReader.Read(buf)
-
-	// zlib EOF: disable and read again once
-	if n == 0 && err == io.EOF && c.activeReader == c.zlibReader {
-		c.zlibReader.Close()
-		c.activeReader = c.in
-		return c.activeReader.Read(buf)
-	}
-
-	return n, err
 }
 
 func (c *zlibSwitchableReader) ActivateZlib() error {
-	if c.activeReader == c.zlibReader {
-		return fmt.Errorf("zlib already activated")
+	if c.zlibActive == true {
+		return errorZlibAlreadyActive
+	}
+	c.zlibActive = true
+
+	// allocate a new reader
+	if c.zlibReader == nil {
+		var err error
+		c.zlibReader, err = zlib.NewReader(c.r)
+		if err != nil {
+			return err
+		}
+		c.zlibBufferedReader = bufio.NewReaderSize(c.zlibReader, readBuf)
+		return nil
 	}
 
-	var err error
-	if c.zlibReader == nil {
-		c.zlibReader, err = zlib.NewReader(c.in)
-	} else {
-		err = c.zlibReader.(zlib.Resetter).Reset(c.in, nil)
+	// reuse previous reader
+	return c.zlibReader.(zlib.Resetter).Reset(c.r, nil)
+}
+
+func (c *zlibSwitchableReader) ReadByte() (byte, error) {
+	if c.zlibActive == false {
+		return c.r.ReadByte()
 	}
-	if err != nil {
-		return err
+
+	res, err := c.zlibBufferedReader.ReadByte()
+
+	// zlib EOF: disable zlib and read again
+	if err == io.EOF {
+		c.zlibActive = false
+		return c.r.ReadByte()
 	}
-	c.activeReader = c.zlibReader
-	return nil
+
+	return res, err
 }
 
 // Reader is a line reader that supports the zlib on/off switching procedure
 // required by hub-to-client and client-to-client connections.
 type Reader struct {
-	in     *zlibSwitchableReader
+	r      *zlibSwitchableReader
 	delim  byte
 	mutex  sync.Mutex
 	buffer []byte
@@ -94,16 +97,16 @@ type Reader struct {
 }
 
 // NewReader allocates a Reader.
-func NewReader(in io.Reader, delim byte) *Reader {
-	// first reader is a buffer that provides the io.ByteReader interface
-	l1 := bufio.NewReaderSize(in, readBuf)
+func NewReader(r io.Reader, delim byte) *Reader {
+	// first reader is bufio.Reader
+	l1 := bufio.NewReaderSize(r, readBuf)
 
 	// second reader is zlibSwitchableReader
 	l2 := newZlibSwitchableReader(l1)
 
 	// third reader is the line reader
 	return &Reader{
-		in:     l2,
+		r:      l2,
 		delim:  delim,
 		buffer: make([]byte, maxLine),
 	}
@@ -124,9 +127,10 @@ func (r *Reader) ReadLine() ([]byte, error) {
 			return nil, errorBufferExhausted
 		}
 
-		// read one character at a time
-		read, err := r.in.Read(r.buffer[offset : offset+1])
-		if read == 0 {
+		// transfer one byte at a time
+		var err error
+		r.buffer[offset], err = r.r.ReadByte()
+		if err != nil {
 			return nil, err
 		}
 		offset++
@@ -153,5 +157,5 @@ func (r *Reader) ReadLine() ([]byte, error) {
 
 // ActivateZlib activates zlib deflating.
 func (r *Reader) ActivateZlib() error {
-	return r.in.ActivateZlib()
+	return r.r.ActivateZlib()
 }
