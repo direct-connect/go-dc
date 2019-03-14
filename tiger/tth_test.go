@@ -105,7 +105,7 @@ func TestTTHLeavesToTreeHash(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		h := lvl.ToTreeHash()
+		h := lvl.TreeHash()
 		if h != tiger.MustParseBase32(c.hash) {
 			t.Errorf("wrong hash on %d: %s vs %s", i+1, c.hash, h)
 		}
