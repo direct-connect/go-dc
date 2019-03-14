@@ -59,7 +59,7 @@ func (c *zlibSwitchableReader) Read(buf []byte) (int, error) {
 	}
 }
 
-func (c *zlibSwitchableReader) ActivateCompression() error {
+func (c *zlibSwitchableReader) ActivateZlib() error {
 	if c.activeReader == c.zlibReader {
 		return fmt.Errorf("zlib already activated")
 	}
@@ -151,7 +151,7 @@ func (r *Reader) ReadLine() ([]byte, error) {
 	}
 }
 
-// ActivateCompression activates zlib deflating.
-func (r *Reader) ActivateCompression() error {
-	return r.in.ActivateCompression()
+// ActivateZlib activates zlib deflating.
+func (r *Reader) ActivateZlib() error {
+	return r.in.ActivateZlib()
 }

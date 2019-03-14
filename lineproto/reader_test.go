@@ -21,7 +21,7 @@ func TestReader(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, l1, l1Expected)
 
-	r.ActivateCompression()
+	r.ActivateZlib()
 
 	l2Expected := []byte("$OtherCommand test|")
 	l2, err := r.ReadLine()
