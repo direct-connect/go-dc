@@ -28,10 +28,10 @@ func TreeLeaves(r io.Reader) (lvl Leaves, err error) {
 	return
 }
 
-// ToTreeHash converts leaves into a hash.
-func (in Leaves) ToTreeHash() Hash {
+// TreeHash converts leaves into a hash.
+func (in Leaves) TreeHash() Hash {
 	// deep copy leaves since they must be modified in order to compute the hash
-	lvl := append(in[:0:0], in...)
+	lvl := append([]Hash{}, in...)
 	buf := make([]byte, 2*Size+1)
 
 	for len(lvl) > 1 {
