@@ -9,9 +9,9 @@ import (
 )
 
 var tthCases = []struct {
-	data []byte
+	data   []byte
 	leaves tiger.Leaves
-	hash string
+	hash   string
 }{
 	{
 		[]byte{},
@@ -83,7 +83,7 @@ var tthCases = []struct {
 		tiger.Leaves([]tiger.Hash{
 			tiger.MustParseBase32("BR4BVJBMHDFVCFI4WBPSL63W5TWXWVBSC574BLI"),
 			tiger.MustParseBase32("CZQUWH3IYXBF5L3BGYUGZHASSMXU647IP2IKE4Y"),
-			}),
+		}),
 		`CDYY2OW6F6DTGCH3Q6NMSDLSRV7PNMAL3CED3DA`,
 	},
 }
@@ -95,6 +95,19 @@ func TestTTHLeaves(t *testing.T) {
 			t.Fatal(err)
 		} else if reflect.DeepEqual(lvl, c.leaves) == false {
 			t.Errorf("wrong leaves on %d: %v vs %v", i+1, c.leaves, lvl)
+		}
+	}
+}
+
+func TestTTHLeavesToTreeHash(t *testing.T) {
+	for i, c := range tthCases {
+		lvl, err := tiger.TreeLeaves(bytes.NewReader(c.data))
+		if err != nil {
+			t.Fatal(err)
+		}
+		h := lvl.ToTreeHash()
+		if h != tiger.MustParseBase32(c.hash) {
+			t.Errorf("wrong hash on %d: %s vs %s", i+1, c.hash, h)
 		}
 	}
 }
