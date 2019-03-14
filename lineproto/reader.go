@@ -79,9 +79,9 @@ func (c *zlibSwitchableReader) ActivateZlib() error {
 // Reader is a line reader that supports the zlib on/off switching procedure
 // required by hub-to-client and client-to-client connections.
 type Reader struct {
-	in     *zlibSwitchableReader
-	delim  byte
-	mutex  sync.Mutex
+	in    *zlibSwitchableReader
+	delim byte
+	mutex sync.Mutex
 	buffer []byte
 
 	// Safe can be set to disable internal mutex.
@@ -103,8 +103,8 @@ func NewReader(in io.Reader, delim byte) *Reader {
 
 	// third reader is the line reader
 	return &Reader{
-		in:     l2,
-		delim:  delim,
+		in:    l2,
+		delim: delim,
 		buffer: make([]byte, maxLine),
 	}
 }
@@ -113,7 +113,7 @@ func NewReader(in io.Reader, delim byte) *Reader {
 // a delimiter and is in the connection encoding. The buffer is only valid until the next
 // call to Read or ReadLine.
 func (r *Reader) ReadLine() ([]byte, error) {
-	if r.Safe == false {
+	if !r.Safe {
 		r.mutex.Lock()
 		defer r.mutex.Unlock()
 	}
