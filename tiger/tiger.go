@@ -11,17 +11,9 @@ import (
 	th "github.com/cxmcc/tiger"
 )
 
-// Returns a new hash.Hash that calculates the Tiger/192 hash digest.
+// New returns a new hash.Hash that calculates the Tiger/192 hash digest.
 func New() hash.Hash {
 	return th.New()
-}
-
-// Returns a new hash.Hash that calculates the Tiger2/192 hash digest.
-//
-// Tiger2 is exactly the same as Tiger but with a different padding scheme: while Tiger uses MD4's scheme
-// of a 0x01 byte followed by zeros, Tiger2 uses MD5's scheme of a 0x80 byte followed by zeros.
-func New2() hash.Hash {
-	return th.New2()
 }
 
 const (
