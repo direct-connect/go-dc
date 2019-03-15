@@ -1,7 +1,9 @@
 package lineproto
 
 import (
-	"bytes"
+	"bufio"
+	"compress/flate"
+	"compress/zlib"
 	"errors"
 	"fmt"
 	"io"
@@ -9,13 +11,12 @@ import (
 )
 
 const (
-	readBuf = 4096
+	readBuf = 2048 // TCP MTU is ~1500
 	maxLine = readBuf * 8
 )
 
-var (
-	errValueIsTooLong = errors.New("value is too long")
-)
+var errorBufferExhausted = errors.New("message buffer exhausted")
+var errorZlibAlreadyActive = errors.New("zlib already activated")
 
 type ErrProtocolViolation struct {
 	Err error
@@ -25,26 +26,66 @@ func (e *ErrProtocolViolation) Error() string {
 	return fmt.Sprintf("protocol error: %v", e.Err)
 }
 
-func NewReader(r io.Reader, delim byte) *Reader {
-	return &Reader{
-		r: r, buf: make([]byte, 0, readBuf),
-		delim:   delim,
-		maxLine: maxLine,
+// zlibSwitchableReader is a zlib reader that can be switched on at any time.
+// the flate.Reader requirement ensures that zlib read only the necessary bytes,
+// leaving the remainings in the previous buffer.
+type zlibSwitchableReader struct {
+	r                  flate.Reader
+	zlibReader         io.ReadCloser
+	zlibActive         bool
+	zlibBufferedReader io.ByteReader
+}
+
+func newZlibSwitchableReader(r flate.Reader) *zlibSwitchableReader {
+	return &zlibSwitchableReader{
+		r: r,
 	}
 }
 
-// Reader is safe for concurrent use.
+func (c *zlibSwitchableReader) ActivateZlib() error {
+	if c.zlibActive == true {
+		return errorZlibAlreadyActive
+	}
+	c.zlibActive = true
+
+	// allocate a new reader
+	if c.zlibReader == nil {
+		var err error
+		c.zlibReader, err = zlib.NewReader(c.r)
+		if err != nil {
+			return err
+		}
+		c.zlibBufferedReader = bufio.NewReaderSize(c.zlibReader, readBuf)
+		return nil
+	}
+
+	// reuse previous reader
+	return c.zlibReader.(zlib.Resetter).Reset(c.r, nil)
+}
+
+func (c *zlibSwitchableReader) ReadByte() (byte, error) {
+	if c.zlibActive == false {
+		return c.r.ReadByte()
+	}
+
+	res, err := c.zlibBufferedReader.ReadByte()
+
+	// zlib EOF: disable zlib and read again
+	if err == io.EOF {
+		c.zlibActive = false
+		return c.r.ReadByte()
+	}
+
+	return res, err
+}
+
+// Reader is a line reader that supports the zlib on/off switching procedure
+// required by hub-to-client and client-to-client connections.
 type Reader struct {
-	r     io.Reader
-	delim byte
-
-	maxLine int
-
-	mu   sync.Mutex
-	err  error
-	buf  []byte
-	i    int
-	mbuf bytes.Buffer // TODO
+	r      *zlibSwitchableReader
+	delim  byte
+	mutex  sync.Mutex
+	buffer []byte
 
 	// Safe can be set to disable internal mutex.
 	Safe bool
@@ -55,51 +96,19 @@ type Reader struct {
 	OnLine func(line []byte) (bool, error)
 }
 
-// SetMaxLine sets a maximal length of the protocol messages in bytes, including the delimiter.
-func (r *Reader) SetMaxLine(n int) {
-	r.maxLine = n
-}
+// NewReader allocates a Reader.
+func NewReader(r io.Reader, delim byte) *Reader {
+	// first reader is bufio.Reader
+	l1 := bufio.NewReaderSize(r, readBuf)
 
-func (r *Reader) peek() ([]byte, error) {
-	if r.i < len(r.buf) {
-		return r.buf[r.i:], nil
-	}
-	r.i = 0
-	r.buf = r.buf[:cap(r.buf)]
-	n, err := r.r.Read(r.buf)
-	r.buf = r.buf[:n]
-	return r.buf, err
-}
+	// second reader is zlibSwitchableReader
+	l2 := newZlibSwitchableReader(l1)
 
-func (r *Reader) discard(n int) {
-	if n < 0 {
-		r.i += len(r.buf)
-	} else {
-		r.i += n
-	}
-}
-
-// readUntil reads a byte slice until the delimiter, up to max bytes.
-// It returns a newly allocated slice with a delimiter and reads bytes and the delimiter
-// from the reader.
-func (r *Reader) readUntil(delim byte, max int) ([]byte, error) {
-	r.mbuf.Reset()
-	for {
-		b, err := r.peek()
-		if err != nil {
-			return nil, err
-		}
-		i := bytes.IndexByte(b, delim)
-		if i >= 0 {
-			r.mbuf.Write(b[:i+1])
-			r.discard(i + 1)
-			return r.mbuf.Bytes(), nil
-		}
-		if r.mbuf.Len()+len(b) > max {
-			return nil, errValueIsTooLong
-		}
-		r.mbuf.Write(b)
-		r.discard(-1)
+	// third reader is the line reader
+	return &Reader{
+		r:      l2,
+		delim:  delim,
+		buffer: make([]byte, maxLine),
 	}
 }
 
@@ -108,31 +117,45 @@ func (r *Reader) readUntil(delim byte, max int) ([]byte, error) {
 // call to Read or ReadLine.
 func (r *Reader) ReadLine() ([]byte, error) {
 	if !r.Safe {
-		r.mu.Lock()
-		defer r.mu.Unlock()
+		r.mutex.Lock()
+		defer r.mutex.Unlock()
 	}
-	if err := r.err; err != nil {
-		return nil, err
-	}
+
+	offset := 0
 	for {
-		data, err := r.readUntil(r.delim, r.maxLine)
-		if err == errValueIsTooLong {
-			r.err = &ErrProtocolViolation{
-				Err: fmt.Errorf("cannot read message: %v", err),
-			}
-			return nil, r.err
-		} else if err != nil {
-			r.err = err
+		if offset >= len(r.buffer) {
+			return nil, errorBufferExhausted
+		}
+
+		// transfer one byte at a time
+		var err error
+		r.buffer[offset], err = r.r.ReadByte()
+		if err != nil {
 			return nil, err
 		}
+		offset++
+
+		if r.buffer[offset-1] != r.delim {
+			continue
+		}
+
 		if r.OnLine != nil {
-			if ok, err := r.OnLine(data); err != nil {
-				r.err = err
+			// OnLine() error
+			if ok, err := r.OnLine(r.buffer[:offset]); err != nil {
 				return nil, err
+
+				// OnLine() commanded to drop buffer
 			} else if !ok {
-				continue // drop
+				offset = 0
+				continue
 			}
 		}
-		return data, nil
+
+		return r.buffer[:offset], nil
 	}
+}
+
+// ActivateZlib activates zlib deflating.
+func (r *Reader) ActivateZlib() error {
+	return r.r.ActivateZlib()
 }
