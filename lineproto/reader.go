@@ -12,7 +12,7 @@ import (
 
 const (
 	readBuf = 2048 // TCP MTU is ~1500
-	maxLine = readBuf * 8
+	maxLine = readBuf * 16
 )
 
 var errorBufferExhausted = errors.New("message buffer exhausted")
