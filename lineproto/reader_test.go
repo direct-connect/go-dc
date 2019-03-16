@@ -16,21 +16,17 @@ func TestReader(t *testing.T) {
 
 	r := NewReader(bytes.NewReader(byts), '|')
 
-	l1Expected := []byte("$ZOn|")
-	l1, err := r.ReadLine()
-	require.NoError(t, err)
-	require.Equal(t, l1, l1Expected)
+	expect := func(exp string) {
+		line, err := r.ReadLine()
+		require.NoError(t, err)
+		require.Equal(t, exp, string(line))
+	}
 
-	err = r.ActivateZlib()
+	expect("$ZOn|")
+
+	err := r.ActivateZlib()
 	require.NoError(t, err)
 
-	l2Expected := []byte("$OtherCommand test|")
-	l2, err := r.ReadLine()
-	require.NoError(t, err)
-	require.Equal(t, l2, l2Expected)
-
-	l3Expected := []byte("$Uncompressed|")
-	l3, err := r.ReadLine()
-	require.NoError(t, err)
-	require.Equal(t, l3, l3Expected)
+	expect("$OtherCommand test|")
+	expect("$Uncompressed|")
 }
