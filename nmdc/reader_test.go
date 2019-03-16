@@ -81,11 +81,25 @@ var casesReader = []struct {
 		},
 	},
 	{
-		name:  "chat",
-		input: "<b>b>> text|",
+		name:  "chat no space",
+		input: "<bob>text msg|<fred> msg2|",
 		exp: []Message{
 			&ChatMessage{
-				Name: "b>b>",
+				Name: "bob",
+				Text: "text msg",
+			},
+			&ChatMessage{
+				Name: "fred",
+				Text: "msg2",
+			},
+		},
+	},
+	{
+		name:  "chat",
+		input: "<b >b >> text|",
+		exp: []Message{
+			&ChatMessage{
+				Name: "b >b >",
 				Text: "text",
 			},
 		},
