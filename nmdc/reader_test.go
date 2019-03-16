@@ -1,8 +1,11 @@
 package nmdc
 
 import (
+	"bytes"
 	"errors"
 	"io"
+	"math/rand"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -145,5 +148,52 @@ func TestReader(t *testing.T) {
 			}
 			require.Equal(t, c.exp, got, "\n%q\nvs\n%q", c.exp, got)
 		})
+	}
+}
+
+func BenchmarkReader(b *testing.B) {
+	const seed = 12345
+	rand := rand.New(rand.NewSource(seed))
+	const size = 10 * (1 << 20) // 10 MB
+	buf := bytes.NewBuffer(nil)
+	b.StopTimer()
+
+	cmds := 0
+	for buf.Len() < size {
+		cmds++
+		buf.WriteByte('$')
+		buf.WriteString("cmd")
+		buf.WriteString(strconv.Itoa(rand.Int()))
+		for i := 0; i < rand.Intn(10); i++ {
+			buf.WriteByte(' ')
+			buf.WriteString(strconv.Itoa(rand.Int()))
+		}
+		buf.WriteByte('|')
+	}
+	data := buf.Bytes()
+
+	b.StartTimer()
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		// hide everything except io.Reader
+		var r io.Reader = struct {
+			io.Reader
+		}{bytes.NewReader(data)}
+
+		lr := NewReader(r)
+
+		n := 0
+		for {
+			_, err := lr.ReadLine()
+			if err == io.EOF {
+				break
+			} else if err != nil {
+				b.Fatal(err)
+			}
+			n++
+		}
+		if n != cmds {
+			b.Fatal("wrong number of commands:", n)
+		}
 	}
 }
