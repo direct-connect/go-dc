@@ -13,6 +13,11 @@ func TestReader(t *testing.T) {
 		206, 207, 205, 77, 204, 75, 81, 40, 73, 45,
 		46, 169, 1, 4, 0, 0, 255, 255, 69, 30, 7, 66}...)
 	byts = append(byts, []byte("$Uncompressed|")...)
+	byts = append(byts, []byte("$ZOn2|")...)
+	byts = append(byts, []byte{120, 156, 82, 241, 47, 201, 72, 45, 114,
+		206, 207, 205, 77, 204, 75, 81, 40, 73, 45,
+		46, 169, 1, 4, 0, 0, 255, 255, 69, 30, 7, 66}...)
+	byts = append(byts, []byte("$Uncompressed2|")...)
 
 	r := NewReader(bytes.NewReader(byts), '|')
 
@@ -23,10 +28,16 @@ func TestReader(t *testing.T) {
 	}
 
 	expect("$ZOn|")
-
 	err := r.ActivateZlib()
 	require.NoError(t, err)
 
 	expect("$OtherCommand test|")
 	expect("$Uncompressed|")
+
+	expect("$ZOn2|")
+	err = r.ActivateZlib()
+	require.NoError(t, err)
+
+	expect("$OtherCommand test|")
+	expect("$Uncompressed2|")
 }

@@ -49,6 +49,7 @@ type bufReader struct {
 func (r *bufReader) Reset(rd io.Reader) {
 	r.r = rd
 	r.off = 0
+	r.buf = r.buf[:0]
 }
 
 func (r *bufReader) peek() error {
@@ -154,6 +155,7 @@ func (r *Reader) ReadLine() ([]byte, error) {
 		if err == io.EOF && r.zlibOn {
 			// if compression was enabled, we need to switch back to original reader
 			r.cur = r.original
+			r.zlibOn = false
 			continue
 		}
 		r.line = append(r.line, pref...)
