@@ -121,7 +121,7 @@ func (r *Reader) readMsgTo(ptr *Message) error {
 				Err: errors.New("message should not contain null characters"),
 			}
 		}
-		line = bytes.TrimSuffix(line, []byte("|"))
+		line = line[:len(line)-1] // trim delimiter
 		if len(line) == 0 {
 			// keep-alive
 			if r.OnKeepAlive != nil {
