@@ -180,7 +180,21 @@ func (r *Reader) ReadLine() ([]byte, error) {
 	}
 }
 
-// ActivateZlib activates zlib deflating.
+// Read reads a byte slice, inflates it if zlib is active, and puts the
+// result into buf.
+func (r *Reader) Read(buf []byte) (int, error) {
+	n, err := r.cur.Read(buf)
+	// n == 0 is needed since Read() can return n > 0 and io.EOF
+	if n == 0 && err == io.EOF && r.zlibOn {
+		// if compression was enabled, we need to switch back to original reader
+		r.cur = r.original
+		r.zlibOn = false
+		return r.cur.Read(buf)
+	}
+	return n, err
+}
+
+// ActivateZlib activates zlib inflating.
 func (r *Reader) ActivateZlib() error {
 	if r.zlibOn {
 		return errZlibAlreadyActive
