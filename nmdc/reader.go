@@ -116,7 +116,7 @@ func (r *Reader) readMsgTo(ptr *Message) error {
 		if err != nil {
 			return err
 		}
-		if bytes.ContainsAny(line, "\x00") {
+		if bytes.IndexByte(line, 0x00) != -1 {
 			return &ErrProtocolViolation{
 				Err: errors.New("message should not contain null characters"),
 			}
