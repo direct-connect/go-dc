@@ -115,6 +115,10 @@ func (r *Reader) readMsgTo(ptr *Message) error {
 		line, err := r.ReadLine()
 		if err != nil {
 			return err
+		} else if n := len(line); n == 0 || line[n-1] != '|' {
+			return &ErrProtocolViolation{
+				Err: errors.New("no message delimiter"),
+			}
 		}
 		if bytes.ContainsAny(line, "\x00") {
 			return &ErrProtocolViolation{
