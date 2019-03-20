@@ -184,11 +184,17 @@ func (r *Reader) ReadLine() ([]byte, error) {
 // result into buf.
 func (r *Reader) Read(buf []byte) (int, error) {
 	n, err := r.cur.Read(buf)
-	// n == 0 is needed since Read() can return n > 0 and io.EOF
-	if n == 0 && err == io.EOF && r.zlibOn {
+	if err == io.EOF && r.zlibOn {
 		// if compression was enabled, we need to switch back to original reader
 		r.cur = r.original
 		r.zlibOn = false
+
+		// if some data was read, return it without errors.
+		if n > 0 {
+			return n, nil
+		}
+
+		// no data was read. Read again.
 		return r.cur.Read(buf)
 	}
 	return n, err
