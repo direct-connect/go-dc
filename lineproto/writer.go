@@ -17,9 +17,9 @@ func NewWriter(w io.Writer) *Writer {
 
 // Writer is safe for concurrent use.
 type Writer struct {
-	// OnLine is called each time a raw protocol message is written.
+	// onLine is called each time a raw protocol message is written.
 	// The function may return (false, nil) to skip writing the message.
-	OnLine func(line []byte) (bool, error)
+	onLine []func(line []byte) (bool, error)
 
 	errNolock atomic.Value // synced with err
 
@@ -28,6 +28,14 @@ type Writer struct {
 	bw  *bufio.Writer
 	err error
 	lvl int
+}
+
+// OnLine registers a hook that is called each time a raw protocol message is written.
+// The function may return (false, nil) to skip writing the message.
+//
+// This method is not concurrent-safe.
+func (w *Writer) OnLine(fnc func(line []byte) (bool, error)) {
+	w.onLine = append(w.onLine, fnc)
 }
 
 func (w *Writer) setError(err error) {
@@ -60,8 +68,8 @@ func (w *Writer) writeLine(data []byte) error {
 	if w.err != nil {
 		return w.err
 	}
-	if w.OnLine != nil {
-		if ok, err := w.OnLine(data); err != nil {
+	for _, fnc := range w.onLine {
+		if ok, err := fnc(data); err != nil {
 			w.setError(err)
 			return err
 		} else if !ok {
