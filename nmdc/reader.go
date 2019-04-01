@@ -62,18 +62,35 @@ type Reader struct {
 	// OnKeepAlive is called when an empty (keep-alive) message is received.
 	OnKeepAlive func() error
 
-	// OnRawCommand is called each time a message is received.
+	// onRawCommand is called each time a message is received.
 	// Protocol commands will have a non-nil name, while chat messages will have a nil name.
 	// The function may return (false, nil) to ignore the message.
-	OnRawMessage func(cmd, args []byte) (bool, error)
+	onRawMessage []func(cmd, args []byte) (bool, error)
 
 	// OnUnknownEncoding is called when a text with non-UTF8 encoding is received.
 	// It may either return a new decoder or return an error to fail the decoding.
 	OnUnknownEncoding func(text []byte) (*TextDecoder, error)
 
-	// OnMessage is called each time a protocol message is decoded.
+	// onMessage is called each time a protocol message is decoded.
 	// The function may return (false, nil) to ignore the message.
-	OnMessage func(m Message) (bool, error)
+	onMessage []func(m Message) (bool, error)
+}
+
+// OnRawCommand registers a hook that is called each time a message is received.
+// Protocol commands will have a non-nil name, while chat messages will have a nil name.
+// The function may return (false, nil) to ignore the message.
+//
+// This method is not concurrent-safe.
+func (r *Reader) OnRawMessage(fnc func(cmd, args []byte) (bool, error)) {
+	r.onRawMessage = append(r.onRawMessage, fnc)
+}
+
+// OnMessage registers a hook that is called each time a protocol message is decoded.
+// The function may return (false, nil) to ignore the message.
+//
+// This method is not concurrent-safe.
+func (r *Reader) OnMessage(fnc func(m Message) (bool, error)) {
+	r.onMessage = append(r.onMessage, fnc)
 }
 
 // SetMaxCmdName sets a maximal length of the protocol command name in bytes.
@@ -147,8 +164,8 @@ func (r *Reader) readMsgTo(ptr *Message) error {
 			if i := bytes.IndexByte(line, ' '); i >= 0 {
 				cmd, args = line[:i], line[i+1:] // name and args
 			}
-			if r.OnRawMessage != nil {
-				if ok, err := r.OnRawMessage(cmd, args); err != nil {
+			for _, fnc := range r.onRawMessage {
+				if ok, err := fnc(cmd, args); err != nil {
 					return err
 				} else if !ok {
 					continue // drop
@@ -184,8 +201,8 @@ func (r *Reader) readMsgTo(ptr *Message) error {
 		} else {
 			// chat message
 			cmd, args = nil, line
-			if r.OnRawMessage != nil {
-				if ok, err := r.OnRawMessage(cmd, args); err != nil {
+			for _, fnc := range r.onRawMessage {
+				if ok, err := fnc(cmd, args); err != nil {
 					return err
 				} else if !ok {
 					continue // drop
@@ -221,8 +238,8 @@ func (r *Reader) readMsgTo(ptr *Message) error {
 		if err != nil {
 			return err
 		}
-		if r.OnMessage != nil {
-			if ok, err := r.OnMessage(out); err != nil {
+		for _, fnc := range r.onMessage {
+			if ok, err := fnc(out); err != nil {
 				return err
 			} else if !ok {
 				continue // drop

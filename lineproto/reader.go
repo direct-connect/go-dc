@@ -120,10 +120,10 @@ type Reader struct {
 	// Safe can be set to disable internal mutex.
 	Safe bool
 
-	// OnLine is called each time a raw protocol line is read from the connection.
+	// onLine is called each time a raw protocol line is read from the connection.
 	// The buffer will contain a delimiter and is in the connection encoding.
 	// The function may return (false, nil) to ignore the message.
-	OnLine func(line []byte) (bool, error)
+	onLine []func(line []byte) (bool, error)
 }
 
 // NewReader allocates a Reader.
@@ -135,6 +135,15 @@ func NewReader(r io.Reader, delim byte) *Reader {
 		cur:      br,
 		line:     make([]byte, readBuf),
 	}
+}
+
+// OnLine registers a hook that is called each time a raw protocol line is read from the connection.
+// The buffer will contain a delimiter and is in the connection encoding.
+// The function may return (false, nil) to ignore the message.
+//
+// This method is not concurrent-safe.
+func (r *Reader) OnLine(fnc func(line []byte) (bool, error)) {
+	r.onLine = append(r.onLine, fnc)
 }
 
 // ReadLine reads a single raw message until the delimiter. The returned buffer contains
@@ -166,8 +175,8 @@ func (r *Reader) ReadLine() ([]byte, error) {
 		}
 
 		line := r.line
-		if r.OnLine != nil {
-			if ok, err := r.OnLine(line); err != nil {
+		for _, fnc := range r.onLine {
+			if ok, err := fnc(line); err != nil {
 				return nil, err
 			} else if !ok {
 				// hook commands to drop the message

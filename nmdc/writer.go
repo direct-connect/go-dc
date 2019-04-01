@@ -19,15 +19,23 @@ func NewWriter(w io.Writer) *Writer {
 type Writer struct {
 	*lineproto.AsyncWriter
 
-	// OnMessage is called each time a NMDC protocol message is written.
+	// onMessage is called each time a NMDC protocol message is written.
 	// The function may return (false, nil) to skip writing the message.
-	OnMessage func(m Message) (bool, error)
+	onMessage []func(m Message) (bool, error)
 
 	encNolock atomic.Value // synced with enc
 
 	mu   sync.Mutex
 	enc  *TextEncoder
 	mbuf bytes.Buffer
+}
+
+// OnMessage registers a hook that is called each time a NMDC protocol message is written.
+// The function may return (false, nil) to skip writing the message.
+//
+// This method is not concurrent-safe.
+func (w *Writer) OnMessage(fnc func(m Message) (bool, error)) {
+	w.onMessage = append(w.onMessage, fnc)
 }
 
 // Encoder returns current encoder.
@@ -51,8 +59,8 @@ func (w *Writer) WriteMsg(m Message) error {
 	if err := w.Writer.Err(); err != nil {
 		return err
 	}
-	if w.OnMessage != nil {
-		if ok, err := w.OnMessage(m); err != nil || !ok {
+	for _, fnc := range w.onMessage {
+		if ok, err := fnc(m); err != nil || !ok {
 			return err
 		}
 	}
@@ -73,8 +81,8 @@ func (w *Writer) WriteMsgAsync(m Message) error {
 	if err := w.Writer.Err(); err != nil {
 		return err
 	}
-	if w.OnMessage != nil {
-		if ok, err := w.OnMessage(m); err != nil || !ok {
+	for _, fnc := range w.onMessage {
+		if ok, err := fnc(m); err != nil || !ok {
 			return err
 		}
 	}
