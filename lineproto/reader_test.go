@@ -28,14 +28,14 @@ func TestReader(t *testing.T) {
 	}
 
 	expect("$ZOn|")
-	err := r.ActivateZlib()
+	err := r.EnableZlib()
 	require.NoError(t, err)
 
 	expect("$OtherCommand test|")
 	expect("$Uncompressed|")
 
 	expect("$ZOn2|")
-	err = r.ActivateZlib()
+	err = r.EnableZlib()
 	require.NoError(t, err)
 
 	expect("$OtherCommand test|")

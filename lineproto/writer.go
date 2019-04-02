@@ -2,6 +2,7 @@ package lineproto
 
 import (
 	"bufio"
+	"compress/zlib"
 	"errors"
 	"io"
 	"sync"
@@ -23,11 +24,13 @@ type Writer struct {
 
 	errNolock atomic.Value // synced with err
 
-	mu  sync.Mutex
-	w   io.Writer
-	bw  *bufio.Writer
-	err error
-	lvl int
+	mu     sync.Mutex
+	w      io.Writer
+	bw     *bufio.Writer
+	err    error
+	lvl    int
+	zlibOn bool
+	zlibW  *zlib.Writer
 }
 
 // OnLine registers a hook that is called each time a raw protocol message is written.
@@ -48,8 +51,58 @@ func (w *Writer) Err() error {
 	return v
 }
 
+// EnableZlib activates zlib deflating.
+func (w *Writer) EnableZlib() error {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	if w.zlibOn {
+		return errZlibAlreadyActive
+	}
+	if err := w.flush(); err != nil {
+		return err
+	}
+	w.zlibOn = true
+	if w.zlibW == nil {
+		w.zlibW = zlib.NewWriter(w.w)
+	} else {
+		w.zlibW.Reset(w.w)
+	}
+	w.bw.Reset(w.zlibW)
+	return nil
+}
+
+// DisableZlib deactivates zlib deflating.
+func (w *Writer) DisableZlib() error {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	if !w.zlibOn {
+		return errZlibNotActive
+	}
+	err := w.bw.Flush()
+	if err != nil {
+		w.setError(err)
+		return err
+	}
+	err = w.zlibW.Close()
+	if err != nil {
+		w.setError(err)
+		return err
+	}
+	w.zlibOn = false
+	w.bw.Reset(w.w)
+	return nil
+}
+
 func (w *Writer) flush() error {
 	err := w.bw.Flush()
+	if err != nil {
+		w.setError(err)
+		return err
+	}
+	if !w.zlibOn {
+		return nil
+	}
+	err = w.zlibW.Flush()
 	if err != nil {
 		w.setError(err)
 	}

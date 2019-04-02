@@ -18,6 +18,7 @@ const (
 var (
 	errBufferExhausted   = errors.New("message is too long")
 	errZlibAlreadyActive = errors.New("zlib already activated")
+	errZlibNotActive     = errors.New("zlib not activate")
 )
 
 type ErrProtocolViolation struct {
@@ -210,7 +211,14 @@ func (r *Reader) Read(buf []byte) (int, error) {
 }
 
 // ActivateZlib activates zlib inflating.
+//
+// Deprecated: use EnableZlib
 func (r *Reader) ActivateZlib() error {
+	return r.EnableZlib()
+}
+
+// EnableZlib activates zlib inflating.
+func (r *Reader) EnableZlib() error {
 	if r.zlibOn {
 		return errZlibAlreadyActive
 	}
