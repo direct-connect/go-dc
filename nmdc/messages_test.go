@@ -375,6 +375,24 @@ var casesUnmarshal = []struct {
 		},
 	},
 	{
+		typ:  "SA",
+		name: "Short TTH search (active)",
+		data: `LWPNACQDBZRYXW3VHJVCJ64QBZNGHOHHHZWCLNQ 1.2.3.4:412`,
+		msg: &TTHSearchActive{
+			TTH:     tiger.MustParseBase32("LWPNACQDBZRYXW3VHJVCJ64QBZNGHOHHHZWCLNQ"),
+			Address: "1.2.3.4:412",
+		},
+	},
+	{
+		typ:  "SP",
+		name: "Short TTH search (passive)",
+		data: `LWPNACQDBZRYXW3VHJVCJ64QBZNGHOHHHZWCLNQ user`,
+		msg: &TTHSearchPassive{
+			TTH:  tiger.MustParseBase32("LWPNACQDBZRYXW3VHJVCJ64QBZNGHOHHHZWCLNQ"),
+			User: "user",
+		},
+	},
+	{
 		typ:  "SR",
 		name: "dir result",
 		data: "User6 dir1\\dir2\\pictures 0/4\x05Testhub (192.168.1.1)",

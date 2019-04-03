@@ -144,6 +144,7 @@ const (
 	ExtMinislots        = "Minislots"
 	ExtTTHL             = "TTHL"
 	ExtTTHF             = "TTHF"
+	ExtTTHS             = "TTHS"
 	ExtZLIG             = "ZLIG"
 	ExtACTM             = "ACTM"
 	ExtBZList           = "BZList"

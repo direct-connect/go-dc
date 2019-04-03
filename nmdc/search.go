@@ -11,6 +11,8 @@ import (
 func init() {
 	RegisterMessage(&Search{})
 	RegisterMessage(&SR{})
+	RegisterMessage(&TTHSearchActive{})
+	RegisterMessage(&TTHSearchPassive{})
 }
 
 type DataType byte
@@ -347,5 +349,67 @@ func (m *SR) UnmarshalNMDC(dec *TextDecoder, data []byte) error {
 		return err
 	}
 	m.To = string(name)
+	return nil
+}
+
+// TTHSearchActive is added by TTHS extension.
+type TTHSearchActive struct {
+	TTH     TTH
+	Address string
+}
+
+func (*TTHSearchActive) Type() string {
+	return "SA"
+}
+
+func (m *TTHSearchActive) MarshalNMDC(enc *TextEncoder, buf *bytes.Buffer) error {
+	buf.WriteString(m.TTH.Base32())
+	buf.WriteByte(' ')
+	buf.WriteString(m.Address)
+	return nil
+}
+
+func (m *TTHSearchActive) UnmarshalNMDC(_ *TextDecoder, data []byte) error {
+	i := bytes.IndexByte(data, ' ')
+	if i < 0 {
+		return errors.New("missing separator in SA command")
+	}
+	if err := m.TTH.FromBase32(string(data[:i])); err != nil {
+		return err
+	}
+	m.Address = string(data[i+1:])
+	return nil
+}
+
+// TTHSearchPassive is added by TTHS extension.
+type TTHSearchPassive struct {
+	TTH  TTH
+	User string
+}
+
+func (*TTHSearchPassive) Type() string {
+	return "SP"
+}
+
+func (m *TTHSearchPassive) MarshalNMDC(enc *TextEncoder, buf *bytes.Buffer) error {
+	buf.WriteString(m.TTH.Base32())
+	buf.WriteByte(' ')
+	buf.WriteString(m.User)
+	return nil
+}
+
+func (m *TTHSearchPassive) UnmarshalNMDC(dec *TextDecoder, data []byte) error {
+	i := bytes.IndexByte(data, ' ')
+	if i < 0 {
+		return errors.New("missing separator in SP command")
+	}
+	if err := m.TTH.FromBase32(string(data[:i])); err != nil {
+		return err
+	}
+	var name Name
+	if err := name.UnmarshalNMDC(dec, data[i+1:]); err != nil {
+		return err
+	}
+	m.User = string(name)
 	return nil
 }
