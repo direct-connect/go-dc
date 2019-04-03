@@ -266,6 +266,7 @@ var casesUnmarshal = []struct {
 		msg: &ConnectToMe{
 			Targ:    "john",
 			Address: "192.168.1.2:412",
+			Kind:    CTMActive,
 			Secure:  false,
 		},
 	},
@@ -275,6 +276,49 @@ var casesUnmarshal = []struct {
 		msg: &ConnectToMe{
 			Targ:    "john",
 			Address: "192.168.1.2:412",
+			Kind:    CTMActive,
+			Secure:  true,
+		},
+	},
+	{
+		typ:  "ConnectToMe",
+		data: `john 192.168.1.2:412N peter`,
+		msg: &ConnectToMe{
+			Targ:    "john",
+			Src:     "peter",
+			Address: "192.168.1.2:412",
+			Kind:    CTMPassiveReq,
+			Secure:  false,
+		},
+	},
+	{
+		typ:  "ConnectToMe",
+		data: `john 192.168.1.2:412NS peter`,
+		msg: &ConnectToMe{
+			Targ:    "john",
+			Src:     "peter",
+			Address: "192.168.1.2:412",
+			Kind:    CTMPassiveReq,
+			Secure:  true,
+		},
+	},
+	{
+		typ:  "ConnectToMe",
+		data: `john 192.168.1.2:412R`,
+		msg: &ConnectToMe{
+			Targ:    "john",
+			Address: "192.168.1.2:412",
+			Kind:    CTMPassiveResp,
+			Secure:  false,
+		},
+	},
+	{
+		typ:  "ConnectToMe",
+		data: `john 192.168.1.2:412RS`,
+		msg: &ConnectToMe{
+			Targ:    "john",
+			Address: "192.168.1.2:412",
+			Kind:    CTMPassiveResp,
 			Secure:  true,
 		},
 	},
