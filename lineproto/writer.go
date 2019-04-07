@@ -18,6 +18,9 @@ func NewWriter(w io.Writer) *Writer {
 
 // Writer is safe for concurrent use.
 type Writer struct {
+	// Timeout is a callback to setup timeout on each write.
+	Timeout func(enable bool) error
+
 	// onLine is called each time a raw protocol message is written.
 	// The function may return (false, nil) to skip writing the message.
 	onLine []func(line []byte) (bool, error)
@@ -94,6 +97,17 @@ func (w *Writer) DisableZlib() error {
 }
 
 func (w *Writer) flush() error {
+	if w.err != nil {
+		return w.err
+	}
+	if w.Timeout != nil {
+		err := w.Timeout(true)
+		if err != nil {
+			w.setError(err)
+			return err
+		}
+		defer w.Timeout(false)
+	}
 	err := w.bw.Flush()
 	if err != nil {
 		w.setError(err)
@@ -129,6 +143,14 @@ func (w *Writer) writeLine(data []byte) error {
 			return nil
 		}
 	}
+	if w.Timeout != nil {
+		err := w.Timeout(true)
+		if err != nil {
+			w.setError(err)
+			return err
+		}
+		defer w.Timeout(false)
+	}
 	if w.lvl > 0 {
 		// someone will flush for us
 		_, err := w.bw.Write(data)
@@ -138,7 +160,7 @@ func (w *Writer) writeLine(data []byte) error {
 		return err
 	}
 	if w.bw.Size() != 0 {
-		// buffer not empty - write through it
+		// buffer not empty - write to it
 		_, err := w.bw.Write(data)
 		if err != nil {
 			w.setError(err)
@@ -169,6 +191,14 @@ func (w *Writer) startOrWrite(data []byte) (bool, error) {
 	defer w.mu.Unlock()
 	if err := w.err; err != nil {
 		return false, err
+	}
+	if w.Timeout != nil {
+		err := w.Timeout(true)
+		if err != nil {
+			w.setError(err)
+			return false, err
+		}
+		defer w.Timeout(false)
 	}
 	_, err := w.bw.Write(data)
 	if err != nil {

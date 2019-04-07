@@ -2,6 +2,7 @@ package lineproto
 
 import (
 	"bytes"
+	"net"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -11,7 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestWriter(t *testing.T) {
+func TestWriterZlib(t *testing.T) {
 	buf := bytes.NewBuffer(nil)
 	w := NewWriter(buf)
 
@@ -80,6 +81,28 @@ func TestWriter(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "$Compressed3|", string(l))
 	require.True(t, r.zlibOn)
+}
+
+func TestWriterTimeout(t *testing.T) {
+	c1, c2 := net.Pipe()
+	defer c1.Close()
+	defer c2.Close()
+
+	w := NewWriter(c1)
+	w.Timeout = func(enable bool) error {
+		if enable {
+			return c1.SetWriteDeadline(time.Now().Add(time.Second / 4))
+		}
+		return c1.SetWriteDeadline(time.Time{})
+	}
+
+	err := w.WriteLine([]byte("Test|"))
+	require.NotNil(t, err)
+	if e, ok := err.(interface {
+		Timeout() bool
+	}); !ok || !e.Timeout() {
+		require.FailNowf(t, "expected timeout error", "got: %T, %v", err, err)
+	}
 }
 
 type Discard struct {
