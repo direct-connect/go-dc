@@ -157,6 +157,7 @@ func (r *Reader) ReadLine() ([]byte, error) {
 	}
 	r.line = r.line[:0]
 
+read:
 	for {
 		if len(r.line) >= maxLine {
 			return nil, errBufferExhausted
@@ -182,7 +183,7 @@ func (r *Reader) ReadLine() ([]byte, error) {
 			} else if !ok {
 				// hook commands to drop the message
 				r.line = r.line[:0]
-				continue
+				continue read
 			}
 		}
 

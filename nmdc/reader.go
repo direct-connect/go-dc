@@ -123,11 +123,26 @@ func (r *Reader) ReadMsgTo(m Message) error {
 	return r.readMsgTo(&m)
 }
 
-func (r *Reader) readMsgTo(ptr *Message) error {
+// ReadMsgToAny will read a message to one of the pointers passed to the function.
+// If the message read doesn't match any of the types, an error will be returned.
+// The method returns a message that was decoded.
+func (r *Reader) ReadMsgToAny(arr ...Message) (Message, error) {
+	if len(arr) == 0 {
+		panic("no messages to decode")
+	}
+	var m Message
+	if err := r.readMsgTo(&m, arr...); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
+func (r *Reader) readMsgTo(ptr *Message, allowed ...Message) error {
 	if !r.Safe {
 		r.mu.Lock()
 		defer r.mu.Unlock()
 	}
+read:
 	for {
 		line, err := r.ReadLine()
 		if err != nil {
@@ -150,7 +165,7 @@ func (r *Reader) readMsgTo(ptr *Message) error {
 					return err
 				}
 			}
-			continue // keep alive, ignore
+			continue // ignore
 		}
 		var (
 			out  = *ptr
@@ -168,7 +183,7 @@ func (r *Reader) readMsgTo(ptr *Message) error {
 				if ok, err := fnc(cmd, args); err != nil {
 					return err
 				} else if !ok {
-					continue // drop
+					continue read // drop
 				}
 			}
 			if len(cmd) == 0 {
@@ -184,13 +199,33 @@ func (r *Reader) readMsgTo(ptr *Message) error {
 					Err: fmt.Errorf("command name should be in acsii: %q", string(cmd)),
 				}
 			}
+			typ := string(cmd)
+			if len(allowed) != 0 {
+				ok := false
+				for _, m := range allowed {
+					if _, raw := m.(*RawMessage); raw || m.Type() == typ {
+						ok = true
+						out = m
+						*ptr = m
+						break
+					}
+				}
+				if !ok {
+					return &ErrUnexpectedCommand{
+						Expected: allowed[0].Type(),
+						Received: &RawMessage{
+							Typ: typ, Data: args,
+						},
+					}
+				}
+			}
 			if out == nil {
 				// detect type by command name
-				out = NewMessage(string(cmd))
+				out = NewMessage(typ)
 				*ptr = out
 			} else if _, ok := out.(*ChatMessage); ok {
 				return errExpectedCommand
-			} else if typ := string(cmd); out.Type() != typ {
+			} else if out.Type() != typ {
 				return &ErrUnexpectedCommand{
 					Expected: out.Type(),
 					Received: &RawMessage{
@@ -205,7 +240,28 @@ func (r *Reader) readMsgTo(ptr *Message) error {
 				if ok, err := fnc(cmd, args); err != nil {
 					return err
 				} else if !ok {
-					continue // drop
+					continue read // drop
+				}
+			}
+			if len(allowed) != 0 {
+				ok := false
+				for _, m := range allowed {
+					_, raw := m.(*RawMessage)
+					_, chat := m.(*ChatMessage)
+					if raw || chat {
+						ok = true
+						out = m
+						*ptr = m
+						break
+					}
+				}
+				if !ok {
+					return &ErrUnexpectedCommand{
+						Expected: allowed[0].Type(),
+						Received: &RawMessage{
+							Data: args,
+						},
+					}
 				}
 			}
 			if out == nil {
@@ -242,7 +298,7 @@ func (r *Reader) readMsgTo(ptr *Message) error {
 			if ok, err := fnc(out); err != nil {
 				return err
 			} else if !ok {
-				continue // drop
+				continue read // drop
 			}
 		}
 		return nil
