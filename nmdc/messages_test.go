@@ -395,10 +395,10 @@ var casesUnmarshal = []struct {
 	{
 		typ:  "SR",
 		name: "dir result",
-		data: "User6 dir1\\dir2\\pictures 0/4\x05Testhub (192.168.1.1)",
+		data: "User6 dir1\\dir 2\\pictures 0/4\x05Testhub (192.168.1.1)",
 		msg: &SR{
 			From:       "User6",
-			Path:       []string{"dir1", "dir2", "pictures"},
+			Path:       []string{"dir1", "dir 2", "pictures"},
 			IsDir:      true,
 			TotalSlots: 4,
 			HubName:    "Testhub",
@@ -408,10 +408,10 @@ var casesUnmarshal = []struct {
 	{
 		typ:  "SR",
 		name: "file result",
-		data: "User1 dir\\file.txt\x05437 3/4\x05Testhub (192.168.1.1:411)\x05User2",
+		data: "User1 dir\\file 1.txt\x05437 3/4\x05Testhub (192.168.1.1:411)\x05User2",
 		msg: &SR{
 			From:       "User1",
-			Path:       []string{"dir", "file.txt"},
+			Path:       []string{"dir", "file 1.txt"},
 			Size:       437,
 			FreeSlots:  3,
 			TotalSlots: 4,
@@ -432,6 +432,21 @@ var casesUnmarshal = []struct {
 			TotalSlots: 3,
 			TTH:        getTHPointer("BNQGWMXKUIAFAU3TV32I5U6SKNYMQBBNH4FELNQ"),
 			HubAddress: "192.168.1.1:411",
+			To:         "User2",
+		},
+	},
+	{
+		typ:  "SR",
+		name: "space in path",
+		data: "User1 dir\\some file.dat\x05152374784 1/3\x05TTH:HRFQOVMYIGSSGXN4FDTOGWO4USC24BBVQLOKIQI (1.2.3.4:411)\x05User2",
+		msg: &SR{
+			From:       "User1",
+			Path:       []string{"dir", "some file.dat"},
+			Size:       152374784,
+			FreeSlots:  1,
+			TotalSlots: 3,
+			TTH:        getTHPointer("HRFQOVMYIGSSGXN4FDTOGWO4USC24BBVQLOKIQI"),
+			HubAddress: "1.2.3.4:411",
 			To:         "User2",
 		},
 	},

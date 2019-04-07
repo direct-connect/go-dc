@@ -267,47 +267,75 @@ func (m *SR) UnmarshalNMDC(dec *TextDecoder, data []byte) error {
 	data = data[i+1:]
 	m.From = string(name)
 
-	i = bytes.IndexByte(data, ' ')
-	if i < 0 {
-		return errors.New("invalid SR command: missing size")
-	}
-	res := data[:i]
-	data = data[i+1:]
-
-	var path String
-	if i = bytes.IndexByte(res, srSep); i >= 0 {
-		if err := path.UnmarshalNMDC(dec, res[:i]); err != nil {
-			return err
-		}
-		m.Path = strings.Split(string(path), "\\")
-		m.Size, err = parseUin64Trim(res[i+1:])
-		if err != nil {
-			return err
-		}
-	} else {
-		if err := path.UnmarshalNMDC(dec, res); err != nil {
-			return err
-		}
-		m.Path = strings.Split(string(path), "\\")
-		m.IsDir = true
-	}
+	// The path may contain spaces, but we have 0x05 separators, right?
+	// However, for directories, there is no 0x05 separator between the path and slots.
 
 	i = bytes.IndexByte(data, srSep)
 	if i < 0 {
-		return errors.New("invalid SR command: missing slots")
+		return errors.New("invalid SR command: missing separator")
 	}
-	res = data[:i]
+
+	// this should contain either path or path and slots
+	maybePath := data[:i]
 	data = data[i+1:]
 
-	i = bytes.IndexByte(res, '/')
+	// try to locate slot separator '/', scanning backward
+	hasSep := false
+	i = -1
+	for j := len(maybePath) - 1; j >= 0; j-- {
+		r := maybePath[j]
+		if r == '/' {
+			hasSep = true
+		} else if r < '0' || r > '9' {
+			i = j
+			break
+		}
+	}
+	var (
+		path  []byte
+		slots []byte
+	)
+	if hasSep && i >= 0 {
+		// directory result - slots are in the path
+		m.IsDir = true
+		m.Size = 0
+		path = maybePath[:i]
+		slots = maybePath[i+1:]
+	} else {
+		// file result - slots and size are after the next 0x05
+		m.IsDir = false
+		path = maybePath
+		i = bytes.IndexByte(data, srSep)
+		if i < 0 {
+			return errors.New("invalid SR command: missing size")
+		}
+		sizeAndSlots := data[:i]
+		data = data[i+1:]
+		i = bytes.IndexByte(sizeAndSlots, ' ')
+		if i < 0 {
+			return errors.New("invalid SR command: missing size separator")
+		}
+		m.Size, err = parseUin64Trim(sizeAndSlots[:i])
+		if err != nil {
+			return err
+		}
+		slots = sizeAndSlots[i+1:]
+	}
+	var spath String
+	if err := spath.UnmarshalNMDC(dec, path); err != nil {
+		return err
+	}
+	m.Path = strings.Split(string(path), "\\")
+
+	i = bytes.IndexByte(slots, '/')
 	if i < 0 {
 		return errors.New("invalid SR command: missing slots separator")
 	}
-	m.FreeSlots, err = atoiTrim(res[:i])
+	m.FreeSlots, err = atoiTrim(slots[:i])
 	if err != nil {
 		return err
 	}
-	m.TotalSlots, err = atoiTrim(res[i+1:])
+	m.TotalSlots, err = atoiTrim(slots[i+1:])
 	if err != nil {
 		return err
 	}
@@ -316,7 +344,7 @@ func (m *SR) UnmarshalNMDC(dec *TextDecoder, data []byte) error {
 	if i < 0 {
 		return errors.New("invalid SR command: missing TTH or hub name")
 	}
-	res = data[:i]
+	res := data[:i]
 	data = data[i+2:]
 	if bytes.HasPrefix(res, []byte("TTH:")) {
 		m.TTH = new(TTH)
