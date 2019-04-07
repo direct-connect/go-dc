@@ -71,6 +71,10 @@ type Reader struct {
 	// It may either return a new decoder or return an error to fail the decoding.
 	OnUnknownEncoding func(text []byte) (*TextDecoder, error)
 
+	// OnUnmarshalError is called when a message cannot be parsed.
+	// It may either return false, nil to skip the message or true, err to return an error.
+	OnUnmarshalError func(text []byte, err error) (bool, error)
+
 	// onMessage is called each time a protocol message is decoded.
 	// The function may return (false, nil) to ignore the message.
 	onMessage []func(m Message) (bool, error)
@@ -167,6 +171,7 @@ read:
 			}
 			continue // ignore
 		}
+		origLine := line
 		var (
 			out  = *ptr
 			cmd  []byte
@@ -292,6 +297,13 @@ read:
 			}
 		}
 		if err != nil {
+			if r.OnUnmarshalError == nil {
+				return err
+			}
+			ok, err := r.OnUnmarshalError(origLine, err)
+			if !ok {
+				continue read // ignore
+			}
 			return err
 		}
 		for _, fnc := range r.onMessage {
