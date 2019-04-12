@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"sync"
 )
 
 const (
@@ -110,16 +109,12 @@ func (r *bufReader) Scan(delim byte) ([]byte, bool, error) {
 type Reader struct {
 	delim byte
 
-	mu         sync.Mutex
 	cur        *bufReader // current reader; set either to original or compressed
 	original   *bufReader // original reader with buffer
 	zlibOn     bool
 	zlib       io.ReadCloser // resettable zlib reader stored for reuse
 	compressed *bufReader    // compressed reader; stored for reuse
 	line       []byte        // buffered line; up to maxLine bytes
-
-	// Safe can be set to disable internal mutex.
-	Safe bool
 
 	// onLine is called each time a raw protocol line is read from the connection.
 	// The buffer will contain a delimiter and is in the connection encoding.
@@ -151,10 +146,6 @@ func (r *Reader) OnLine(fnc func(line []byte) (bool, error)) {
 // a delimiter and is in the connection encoding. The buffer is only valid until the next
 // call to Read or ReadLine.
 func (r *Reader) ReadLine() ([]byte, error) {
-	if !r.Safe {
-		r.mu.Lock()
-		defer r.mu.Unlock()
-	}
 	r.line = r.line[:0]
 
 read:
