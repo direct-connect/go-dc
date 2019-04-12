@@ -47,7 +47,7 @@ func NewReader(r io.Reader) *Reader {
 	}
 }
 
-// Reader is safe for concurrent use.
+// Reader is not safe for concurrent use.
 type Reader struct {
 	*lineproto.Reader
 

@@ -12,7 +12,7 @@ func NewWriter(w io.Writer) *Writer {
 	}
 }
 
-// Writer is safe for concurrent use.
+// Writer is not safe for concurrent use.
 type Writer struct {
 	*lineproto.Writer
 
