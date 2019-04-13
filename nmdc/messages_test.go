@@ -362,9 +362,23 @@ var casesUnmarshal = []struct {
 		},
 	},
 	{
+		typ:     "Search",
+		name:    "TTH",
+		data:    `Hub:SomeNick F?T?0?9?TTH:TO32WPD6AQE7VA7654HEAM5GKFQGIL7F2BEKFNA`,
+		expData: `Hub:SomeNick F?T?0?9?TTH:TO32WPD6AQE7VA7654HEAM5GKFQGIL7F2BEKFNA$`,
+		msg: &Search{
+			User:           "SomeNick",
+			SizeRestricted: false,
+			IsMaxSize:      true,
+			Size:           0,
+			DataType:       DataTypeTTH,
+			TTH:            getTHPointer("TO32WPD6AQE7VA7654HEAM5GKFQGIL7F2BEKFNA"),
+		},
+	},
+	{
 		typ:  "Search",
-		name: "TTH",
-		data: `Hub:SomeNick F?T?0?9?TTH:TO32WPD6AQE7VA7654HEAM5GKFQGIL7F2BEKFNA`,
+		name: "TTH trailing sep",
+		data: `Hub:SomeNick F?T?0?9?TTH:TO32WPD6AQE7VA7654HEAM5GKFQGIL7F2BEKFNA$`,
 		msg: &Search{
 			User:           "SomeNick",
 			SizeRestricted: false,

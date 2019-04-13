@@ -85,6 +85,7 @@ func (m *Search) MarshalNMDC(enc *TextEncoder, buf *bytes.Buffer) error {
 		}
 		buf.WriteString("TTH:")
 		buf.WriteString(m.TTH.Base32())
+		buf.WriteByte('$')
 	} else {
 		buf2 := bytes.NewBuffer(nil)
 		if err := String(m.Pattern).MarshalNMDC(enc, buf2); err != nil {
@@ -163,6 +164,9 @@ func (m *Search) unmarshalString(dec *TextDecoder, data []byte) error {
 			return fmt.Errorf("invalid TTH search")
 		}
 		hash := field[len(tthPref):]
+		if n := len(hash); n != 0 && hash[n-1] == '$' {
+			hash = hash[:n-1]
+		}
 		m.TTH = new(TTH)
 		err := m.TTH.FromBase32(string(hash))
 		if err != nil {
