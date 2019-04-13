@@ -7,6 +7,7 @@ import (
 	"io"
 	"math"
 	"strconv"
+	"sync/atomic"
 
 	"github.com/direct-connect/go-dc/lineproto"
 )
@@ -51,11 +52,11 @@ func NewReader(r io.Reader) *Reader {
 type Reader struct {
 	*lineproto.Reader
 
-	maxCmdName int
-
 	// dec is the current decoder for the text values.
 	// It converts connection encoding to UTF8. Nil value means that connection uses UTF8.
-	dec *TextDecoder
+	dec atomic.Value // *TextDecoder
+
+	maxCmdName int
 
 	// OnKeepAlive is called when an empty (keep-alive) message is received.
 	OnKeepAlive func() error
@@ -100,9 +101,15 @@ func (r *Reader) SetMaxCmdName(n int) {
 	r.maxCmdName = n
 }
 
+// Decoder returns current text decoder.
+func (r *Reader) Decoder() *TextDecoder {
+	dec, _ := r.dec.Load().(*TextDecoder)
+	return dec
+}
+
 // SetDecoder sets a text decoder for the connection.
 func (r *Reader) SetDecoder(dec *TextDecoder) {
-	r.dec = dec
+	r.dec.Store(dec)
 }
 
 // ReadMsg reads a single message.
@@ -138,6 +145,7 @@ func (r *Reader) ReadMsgToAny(arr ...Message) (Message, error) {
 }
 
 func (r *Reader) readMsgTo(ptr *Message, allowed ...Message) error {
+	dec := r.Decoder()
 read:
 	for {
 		line, err := r.ReadLine()
@@ -268,10 +276,9 @@ read:
 				return errExpectedChat
 			}
 		}
-		err = out.UnmarshalNMDC(r.dec, args)
+		err = out.UnmarshalNMDC(dec, args)
 		if r.OnUnknownEncoding != nil {
 			if e, ok := err.(*errUnknownEncoding); ok {
-				var dec *TextDecoder
 				dec, err = r.OnUnknownEncoding(e.text)
 				if err != nil {
 					return err
@@ -283,9 +290,9 @@ read:
 					}, args)
 				} else {
 					// switch encoding and decode again
-					r.dec = dec
+					r.SetDecoder(dec)
 				}
-				err = out.UnmarshalNMDC(r.dec, args)
+				err = out.UnmarshalNMDC(dec, args)
 			}
 		}
 		if err != nil {
