@@ -11,7 +11,7 @@ import (
 	"github.com/direct-connect/go-dc/tiger"
 )
 
-var casesUnmarshal = []struct {
+var casesMessages = []struct {
 	typ     string
 	name    string
 	data    string
@@ -533,7 +533,7 @@ func getTHPointer(s string) *tiger.Hash {
 }
 
 func TestUnmarshal(t *testing.T) {
-	for _, c := range casesUnmarshal {
+	for _, c := range casesMessages {
 		name := c.typ
 		if c.name != "" {
 			name += " " + c.name
@@ -548,7 +548,7 @@ func TestUnmarshal(t *testing.T) {
 }
 
 func TestMarshal(t *testing.T) {
-	for _, c := range casesUnmarshal {
+	for _, c := range casesMessages {
 		name := c.typ
 		if c.name != "" {
 			name += " " + c.name
@@ -567,12 +567,39 @@ func TestMarshal(t *testing.T) {
 }
 
 func BenchmarkUnmarshal(b *testing.B) {
-	for _, c := range casesUnmarshal {
-		b.Run(c.name, func(b *testing.B) {
+	for _, c := range casesMessages {
+		name := c.typ
+		if c.name != "" {
+			name += " " + c.name
+		}
+		b.Run(name, func(b *testing.B) {
 			data := []byte(c.data)
 			for i := 0; i < b.N; i++ {
 				m := NewMessage(c.typ)
 				err := m.UnmarshalNMDC(nil, data)
+				if err != nil {
+					b.Fatal(err)
+				}
+			}
+		})
+	}
+}
+
+func BenchmarkMarshal(b *testing.B) {
+	for _, c := range casesMessages {
+		name := c.typ
+		if c.name != "" {
+			name += " " + c.name
+		}
+		b.Run(name, func(b *testing.B) {
+			m := NewMessage(c.typ)
+			err := m.UnmarshalNMDC(nil, []byte(c.data))
+			buf := bytes.NewBuffer(nil)
+			b.ResetTimer()
+			b.ReportAllocs()
+			for i := 0; i < b.N; i++ {
+				buf.Reset()
+				err = m.MarshalNMDC(nil, buf)
 				if err != nil {
 					b.Fatal(err)
 				}

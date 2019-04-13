@@ -11,9 +11,17 @@ import (
 	"github.com/direct-connect/go-dc/tiger"
 )
 
+var invalidCharsNameI [256]bool
+
 const (
 	invalidCharsName = "$\x00\r\n\t"
 )
+
+func init() {
+	for _, c := range invalidCharsName {
+		invalidCharsNameI[c] = true
+	}
+}
 
 var legacyUnescaper = strings.NewReplacer(
 	"/%DCN000%/", "\x00",
@@ -24,37 +32,18 @@ var legacyUnescaper = strings.NewReplacer(
 	"/%DCN126%/", "~",
 )
 
-var htmlEscaper = strings.NewReplacer(
-	"&", "&amp;",
-	"$", "&#36;",
-	"|", "&#124;",
-)
-
-var htmlEscaperName = strings.NewReplacer(
-	"&", "&amp;",
-	"<", "&lt;",
-	">", "&gt;",
-	"$", "&#36;",
-	"|", "&#124;",
-)
-
-// Escape the string value.
-func Escape(s string) string {
-	return htmlEscaper.Replace(s)
+var escapeCharsString = [256]string{
+	'&': "&amp;",
+	'$': "&#36;",
+	'|': "&#124;",
 }
 
-// EscapeName escapes the string value according to name escaping rules.
-func EscapeName(s string) string {
-	return htmlEscaperName.Replace(s)
-}
-
-// Unescape string value.
-func Unescape(s string) string {
-	if strings.Contains(s, "/%DCN") {
-		s = legacyUnescaper.Replace(s)
-	}
-	s = html.UnescapeString(s)
-	return s
+var escapeCharsName = [256]string{
+	'&': "&amp;",
+	'<': "&lt;",
+	'>': "&gt;",
+	'$': "&#36;",
+	'|': "&#124;",
 }
 
 func UnescapeBytes(b []byte) []byte {
@@ -96,8 +85,6 @@ type Name string
 func (s Name) MarshalNMDC(enc *TextEncoder, buf *bytes.Buffer) error {
 	if len(s) > maxName {
 		return errors.New("name is too long")
-	} else if strings.ContainsAny(string(s), invalidCharsName) {
-		return fmt.Errorf("invalid characters in name: %q", string(s))
 	}
 	str := string(s)
 	if enc != nil {
@@ -107,9 +94,7 @@ func (s Name) MarshalNMDC(enc *TextEncoder, buf *bytes.Buffer) error {
 			return err
 		}
 	}
-	str = EscapeName(str)
-	buf.WriteString(str)
-	return nil
+	return escapeName(buf, str)
 }
 
 func (s *Name) UnmarshalNMDC(dec *TextDecoder, data []byte) error {
@@ -137,9 +122,6 @@ func (s *Name) UnmarshalNMDC(dec *TextDecoder, data []byte) error {
 type String string
 
 func (s String) MarshalNMDC(enc *TextEncoder, buf *bytes.Buffer) error {
-	if strings.Contains(string(s), "\x00") {
-		return errors.New("invalid characters in text")
-	}
 	str := string(s)
 	if enc != nil {
 		var err error
@@ -148,13 +130,11 @@ func (s String) MarshalNMDC(enc *TextEncoder, buf *bytes.Buffer) error {
 			return err
 		}
 	}
-	str = Escape(str)
-	buf.WriteString(str)
-	return nil
+	return escapeString(buf, str)
 }
 
 func (s *String) UnmarshalNMDC(dec *TextDecoder, data []byte) error {
-	if bytes.Contains(data, []byte{0x00}) {
+	if bytes.IndexByte(data, 0x00) >= 0 {
 		return errors.New("invalid characters in text")
 	}
 	data = UnescapeBytes(data)

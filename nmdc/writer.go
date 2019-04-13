@@ -2,8 +2,10 @@ package nmdc
 
 import (
 	"bytes"
-	"github.com/direct-connect/go-dc/lineproto"
+	"errors"
 	"io"
+
+	"github.com/direct-connect/go-dc/lineproto"
 )
 
 func NewWriter(w io.Writer) *Writer {
@@ -58,4 +60,46 @@ func (w *Writer) WriteMsg(m Message) error {
 		return err
 	}
 	return w.WriteLine(w.mbuf.Bytes())
+}
+
+func escapeString(sw *bytes.Buffer, s string) error {
+	last := 0
+	for i := 0; i < len(s); i++ {
+		b := s[i]
+		if b == 0x00 {
+			return errors.New("invalid characters in string")
+		} else if escapeCharsString[b] == "" {
+			continue
+		}
+		if last != i {
+			sw.WriteString(s[last:i])
+		}
+		last = i + 1
+		sw.WriteString(escapeCharsString[b])
+	}
+	if last != len(s) {
+		sw.WriteString(s[last:])
+	}
+	return nil
+}
+
+func escapeName(sw *bytes.Buffer, s string) error {
+	last := 0
+	for i := 0; i < len(s); i++ {
+		b := s[i]
+		if invalidCharsNameI[b] {
+			return errors.New("invalid characters in name")
+		} else if escapeCharsName[b] == "" {
+			continue
+		}
+		if last != i {
+			sw.WriteString(s[last:i])
+		}
+		last = i + 1
+		sw.WriteString(escapeCharsName[b])
+	}
+	if last != len(s) {
+		sw.WriteString(s[last:])
+	}
+	return nil
 }

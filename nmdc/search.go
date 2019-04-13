@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+
+	"github.com/direct-connect/go-dc/tiger"
 )
 
 func init() {
@@ -55,37 +57,40 @@ func (m *Search) MarshalNMDC(enc *TextEncoder, buf *bytes.Buffer) error {
 			return err
 		}
 	}
-	buf.WriteByte(' ')
 
+	var b [4 + tiger.Base32Size + 1]byte
+	b[0] = ' '
 	if m.SizeRestricted {
-		buf.WriteString("T?")
+		copy(b[1:], "T?")
 		if m.IsMaxSize {
-			buf.WriteByte('T')
+			b[3] = 'T'
 		} else {
-			buf.WriteByte('F')
+			b[3] = 'F'
 		}
 	} else {
-		buf.WriteString("F?T")
+		copy(b[1:], "F?T")
 	}
-
-	buf.WriteByte('?')
-	buf.WriteString(strconv.FormatUint(m.Size, 10))
-
-	buf.WriteByte('?')
+	b[4] = '?'
+	bi := strconv.AppendUint(b[:5], m.Size, 10)
+	bi = append(bi, '?')
 	if m.DataType == 0 {
-		buf.WriteByte(byte(DataTypeAny))
+		bi = append(bi, byte(DataTypeAny))
 	} else {
-		buf.WriteByte(byte(m.DataType))
+		bi = append(bi, byte(m.DataType))
 	}
+	bi = append(bi, '?')
+	buf.Write(bi)
 
-	buf.WriteByte('?')
 	if m.DataType == DataTypeTTH {
 		if m.TTH == nil {
-			return fmt.Errorf("invalid TTH pointer")
+			return errors.New("invalid TTH pointer")
 		}
-		buf.WriteString("TTH:")
-		buf.WriteString(m.TTH.Base32())
-		buf.WriteByte('$')
+		copy(b[:4], "TTH:")
+		if err := m.TTH.MarshalBase32(b[4:]); err != nil {
+			return err
+		}
+		b[len(b)-1] = '$'
+		buf.Write(b[:])
 	} else {
 		buf2 := bytes.NewBuffer(nil)
 		if err := String(m.Pattern).MarshalNMDC(enc, buf2); err != nil {
@@ -168,7 +173,7 @@ func (m *Search) unmarshalString(dec *TextDecoder, data []byte) error {
 			hash = hash[:n-1]
 		}
 		m.TTH = new(TTH)
-		err := m.TTH.FromBase32(string(hash))
+		err := m.TTH.UnmarshalBase32(hash)
 		if err != nil {
 			return err
 		}
@@ -222,23 +227,34 @@ func (m *SR) MarshalNMDC(enc *TextEncoder, buf *bytes.Buffer) error {
 	if len(m.Path) == 0 {
 		return errors.New("invalid SR command: empty path")
 	}
-	path := strings.Join(m.Path, "\\")
 	buf.WriteByte(' ')
-	if err := String(path).MarshalNMDC(enc, buf); err != nil {
-		return err
+	for i, p := range m.Path {
+		if i != 0 {
+			buf.WriteByte('\\')
+		}
+		if err := String(p).MarshalNMDC(enc, buf); err != nil {
+			return err
+		}
 	}
+	var b [4 + tiger.Base32Size]byte
 	if !m.IsDir {
-		buf.WriteByte(srSep)
-		buf.WriteString(strconv.FormatUint(m.Size, 10))
+		b[0] = srSep
+		bi := strconv.AppendUint(b[:1], m.Size, 10)
+		buf.Write(bi)
 	}
-	buf.WriteByte(' ')
-	buf.WriteString(strconv.Itoa(m.FreeSlots))
-	buf.WriteByte('/')
-	buf.WriteString(strconv.Itoa(m.TotalSlots))
-	buf.WriteByte(srSep)
+	bi := append(b[:0], ' ')
+	bi = strconv.AppendInt(bi, int64(m.FreeSlots), 10)
+	bi = append(bi, '/')
+	bi = strconv.AppendInt(bi, int64(m.TotalSlots), 10)
+	bi = append(bi, srSep)
+	buf.Write(bi)
+
 	if m.TTH != nil {
-		buf.WriteString("TTH:")
-		buf.WriteString(m.TTH.Base32())
+		copy(b[:4], "TTH:")
+		if err := m.TTH.MarshalBase32(b[4:]); err != nil {
+			return err
+		}
+		buf.Write(b[:])
 	} else {
 		// legacy
 		if err := String(m.HubName).MarshalNMDC(enc, buf); err != nil {
@@ -344,19 +360,26 @@ func (m *SR) UnmarshalNMDC(dec *TextDecoder, data []byte) error {
 		return err
 	}
 
-	i = bytes.Index(data, []byte(" ("))
-	if i < 0 {
-		return errors.New("invalid SR command: missing TTH or hub name")
-	}
-	res := data[:i]
-	data = data[i+2:]
-	if bytes.HasPrefix(res, []byte("TTH:")) {
+	if bytes.HasPrefix(data, []byte("TTH:")) {
+		data = data[4:]
+		i = tiger.Base32Size
+		if i+1 >= len(data) || data[i] != ' ' || data[i+1] != '(' {
+			return errors.New("invalid SR command: invalid TTH search")
+		}
+		res := data[:i]
+		data = data[i+2:]
 		m.TTH = new(TTH)
-		err = m.TTH.FromBase32(string(res[4:]))
+		err = m.TTH.UnmarshalBase32(res)
 		if err != nil {
 			return err
 		}
 	} else {
+		i = bytes.Index(data, []byte(" ("))
+		if i < 0 {
+			return errors.New("invalid SR command: missing TTH or hub name")
+		}
+		res := data[:i]
+		data = data[i+2:]
 		var s String
 		err = s.UnmarshalNMDC(dec, res)
 		if err != nil {
@@ -395,18 +418,22 @@ func (*TTHSearchActive) Type() string {
 }
 
 func (m *TTHSearchActive) MarshalNMDC(enc *TextEncoder, buf *bytes.Buffer) error {
-	buf.WriteString(m.TTH.Base32())
-	buf.WriteByte(' ')
+	var b [tiger.Base32Size + 1]byte
+	if err := m.TTH.MarshalBase32(b[:]); err != nil {
+		return err
+	}
+	b[len(b)-1] = ' '
+	buf.Write(b[:])
 	buf.WriteString(m.Address)
 	return nil
 }
 
 func (m *TTHSearchActive) UnmarshalNMDC(_ *TextDecoder, data []byte) error {
-	i := bytes.IndexByte(data, ' ')
-	if i < 0 {
+	const i = tiger.Base32Size
+	if i >= len(data) || data[i] != ' ' {
 		return errors.New("missing separator in SA command")
 	}
-	if err := m.TTH.FromBase32(string(data[:i])); err != nil {
+	if err := m.TTH.UnmarshalBase32(data[:i]); err != nil {
 		return err
 	}
 	m.Address = string(data[i+1:])
@@ -424,18 +451,24 @@ func (*TTHSearchPassive) Type() string {
 }
 
 func (m *TTHSearchPassive) MarshalNMDC(enc *TextEncoder, buf *bytes.Buffer) error {
-	buf.WriteString(m.TTH.Base32())
-	buf.WriteByte(' ')
-	buf.WriteString(m.User)
+	var b [tiger.Base32Size + 1]byte
+	if err := m.TTH.MarshalBase32(b[:]); err != nil {
+		return err
+	}
+	b[len(b)-1] = ' '
+	buf.Write(b[:])
+	if err := Name(m.User).MarshalNMDC(enc, buf); err != nil {
+		return err
+	}
 	return nil
 }
 
 func (m *TTHSearchPassive) UnmarshalNMDC(dec *TextDecoder, data []byte) error {
-	i := bytes.IndexByte(data, ' ')
-	if i < 0 {
+	const i = tiger.Base32Size
+	if i >= len(data) || data[i] != ' ' {
 		return errors.New("missing separator in SP command")
 	}
-	if err := m.TTH.FromBase32(string(data[:i])); err != nil {
+	if err := m.TTH.UnmarshalBase32(data[:i]); err != nil {
 		return err
 	}
 	var name Name

@@ -33,7 +33,7 @@ func (m *ConnectToMe) Type() string {
 
 func (m *ConnectToMe) MarshalNMDC(enc *TextEncoder, buf *bytes.Buffer) error {
 	if m.Targ == "" {
-		return fmt.Errorf("ConnectToMe target should be set")
+		return errors.New("ConnectToMe target should be set")
 	}
 	if err := Name(m.Targ).MarshalNMDC(enc, buf); err != nil {
 		return err
@@ -55,12 +55,12 @@ func (m *ConnectToMe) MarshalNMDC(enc *TextEncoder, buf *bytes.Buffer) error {
 	}
 	if m.Kind != CTMPassiveReq {
 		if m.Src != "" {
-			return fmt.Errorf("only passive ConnectToMe requests should have a source")
+			return errors.New("only passive ConnectToMe requests should have a source")
 		}
 		return nil
 	}
 	if m.Src == "" {
-		return fmt.Errorf("passive ConnectToMe requests should have a source")
+		return errors.New("passive ConnectToMe requests should have a source")
 	}
 	buf.WriteByte(' ')
 	if err := Name(m.Src).MarshalNMDC(enc, buf); err != nil {

@@ -17,8 +17,9 @@ func New() hash.Hash {
 }
 
 const (
-	BlockSize = 64 // 512 bits
-	Size      = 24 // 192 bits
+	BlockSize  = 64 // 512 bits
+	Size       = 24 // 192 bits
+	Base32Size = 39
 )
 
 // HashBytes calculates the tiger hash of a byte slice.
@@ -68,6 +69,24 @@ func (h Hash) Hex() string {
 // Base32 returns base32 representation of the hash.
 func (h Hash) Base32() string {
 	return base32Enc.EncodeToString(h[:])
+}
+
+// MarshalBase32 encodes the hash to a given buffer. Buffer should be at least Base32Len.
+func (h Hash) MarshalBase32(buf []byte) error {
+	base32Enc.Encode(buf, h[:])
+	return nil
+}
+
+// UnmarshalBase32 decodes the hash from a given buffer.
+func (h *Hash) UnmarshalBase32(buf []byte) error {
+	n, err := base32Enc.Decode((*h)[:], buf)
+	if err != nil {
+		return err
+	}
+	if n != Size {
+		return fmt.Errorf("wrong base32 encoded size: %d vs %d", n, Size)
+	}
+	return nil
 }
 
 // FromBase32 parses hash from base32 encoding.

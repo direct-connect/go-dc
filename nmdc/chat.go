@@ -264,11 +264,13 @@ func (*UserCommand) Type() string {
 }
 
 func (m *UserCommand) MarshalNMDC(enc *TextEncoder, buf *bytes.Buffer) error {
-	buf.Write([]byte(strconv.Itoa(int(m.Typ))))
-	buf.WriteString(" ")
-	buf.Write([]byte(strconv.Itoa(int(m.Context))))
+	var b [10]byte
+	bi := strconv.AppendUint(b[:0], uint64(m.Typ), 10)
+	bi = append(bi, ' ')
+	bi = strconv.AppendUint(bi, uint64(m.Context), 10)
 	if len(m.Path) != 0 {
-		buf.WriteString(" ")
+		bi = append(bi, ' ')
+		buf.Write(bi)
 		for i, s := range m.Path {
 			if i != 0 {
 				buf.WriteString("\\")
@@ -277,12 +279,15 @@ func (m *UserCommand) MarshalNMDC(enc *TextEncoder, buf *bytes.Buffer) error {
 				return err
 			}
 		}
+	} else {
+		buf.Write(bi)
 	}
-	if m.Command != "" {
-		buf.WriteString(" $")
-		if err := String(m.Command).MarshalNMDC(enc, buf); err != nil {
-			return err
-		}
+	if m.Command == "" {
+		return nil
+	}
+	buf.WriteString(" $")
+	if err := String(m.Command).MarshalNMDC(enc, buf); err != nil {
+		return err
 	}
 	return nil
 }

@@ -119,50 +119,64 @@ func (m *MyINFO) MarshalNMDC(enc *TextEncoder, buf *bytes.Buffer) error {
 	if err := String(m.Desc).MarshalNMDC(enc, buf); err != nil {
 		return err
 	}
-	buf.WriteString("<")
-	buf.WriteString(m.Client.Name)
-	buf.WriteString(" ")
+	var b [24]byte
 
-	buf.WriteString("V:")
-	buf.WriteString(m.Client.Version)
+	b[0] = '<'
+	bi := append(b[:1], m.Client.Name...)
+	bi = append(bi, " V:"...)
+	bi = append(bi, m.Client.Version...)
 
-	buf.WriteString(",M:")
+	buf.Write(bi)
+	bi = bi[:0]
+
+	bi = append(bi, ",M:"...)
 	if m.Mode != UserModeUnknown && m.Mode != ' ' {
-		buf.WriteByte(byte(m.Mode))
+		bi = append(bi, byte(m.Mode))
 	} else {
-		buf.WriteByte(' ')
+		bi = append(bi, ' ')
 	}
 
-	buf.WriteString(",H:")
-	buf.WriteString(strconv.Itoa(m.HubsNormal))
-	buf.WriteString("/")
-	buf.WriteString(strconv.Itoa(m.HubsRegistered))
-	buf.WriteString("/")
-	buf.WriteString(strconv.Itoa(m.HubsOperator))
+	bi = append(bi, ",H:"...)
+	bi = strconv.AppendInt(bi, int64(m.HubsNormal), 10)
+	bi = append(bi, '/')
+	bi = strconv.AppendInt(bi, int64(m.HubsRegistered), 10)
+	bi = append(bi, '/')
+	bi = strconv.AppendInt(bi, int64(m.HubsOperator), 10)
 
-	buf.WriteString(",S:")
-	buf.WriteString(strconv.Itoa(m.Slots))
+	bi = append(bi, ",S:"...)
+	bi = strconv.AppendInt(bi, int64(m.Slots), 10)
+	buf.Write(bi)
 
 	for name, value := range m.Extra {
-		buf.WriteString(",")
-		buf.WriteString(name)
-		buf.WriteString(":")
-		buf.WriteString(value)
+		bi = bi[:1]
+		b[0] = ','
+		bi = append(bi, name...)
+		bi = append(bi, ':')
+		bi = append(bi, value...)
+		buf.Write(bi)
 	}
 
-	buf.WriteString(">")
-	buf.WriteString("$ $")
-	buf.WriteString(m.Conn)
+	bi = append(bi[:0], ">$ $"...)
+	bi = append(bi, m.Conn...)
 	if m.Flag == 0 {
-		buf.WriteByte(byte(FlagStatusNormal))
+		bi = append(bi, byte(FlagStatusNormal))
 	} else {
-		buf.WriteByte(byte(m.Flag))
+		bi = append(bi, byte(m.Flag))
 	}
-	buf.WriteString("$")
-	buf.WriteString(m.Email)
-	buf.WriteString("$")
-	buf.WriteString(strconv.FormatUint(m.ShareSize, 10))
-	buf.WriteString("$")
+	bi = append(bi, '$')
+	if len(m.Email)+1 >= cap(bi)-len(bi) {
+		buf.Write(bi)
+		bi = bi[:0]
+	}
+	bi = append(bi, m.Email...)
+	bi = append(bi, '$')
+
+	buf.Write(bi)
+	bi = bi[:0]
+
+	bi = strconv.AppendUint(bi, m.ShareSize, 10)
+	bi = append(bi, '$')
+	buf.Write(bi)
 	return nil
 }
 
