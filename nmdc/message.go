@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"reflect"
+	"sort"
 
 	"golang.org/x/text/encoding"
 )
@@ -59,6 +60,22 @@ func NewMessage(typ string) Message {
 		return &RawMessage{Typ: typ}
 	}
 	return reflect.New(rt).Interface().(Message)
+}
+
+// RegisteredTypes list all registered message types.
+func RegisteredTypes() []string {
+	arr := make([]string, 0, len(messages))
+	for typ := range messages {
+		arr = append(arr, typ)
+	}
+	sort.Strings(arr)
+	return arr
+}
+
+// IsRegistered check if a message type is registered.
+func IsRegistered(typ string) bool {
+	_, ok := messages[typ]
+	return ok
 }
 
 var _ Message = (*RawMessage)(nil)
