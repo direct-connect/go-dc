@@ -202,13 +202,6 @@ func (r *Reader) Read(buf []byte) (int, error) {
 	return n, err
 }
 
-// ActivateZlib activates zlib inflating.
-//
-// Deprecated: use EnableZlib
-func (r *Reader) ActivateZlib() error {
-	return r.EnableZlib()
-}
-
 // EnableZlib activates zlib inflating.
 func (r *Reader) EnableZlib() error {
 	if r.zlibOn {
