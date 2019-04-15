@@ -58,7 +58,7 @@ func (m *Search) MarshalNMDC(enc *TextEncoder, buf *bytes.Buffer) error {
 		}
 	}
 
-	var b [4 + tiger.Base32Size + 1]byte
+	var b [4 + tiger.Base32Size]byte
 	b[0] = ' '
 	if m.SizeRestricted {
 		copy(b[1:], "T?")
@@ -89,7 +89,6 @@ func (m *Search) MarshalNMDC(enc *TextEncoder, buf *bytes.Buffer) error {
 		if err := m.TTH.MarshalBase32(b[4:]); err != nil {
 			return err
 		}
-		b[len(b)-1] = '$'
 		buf.Write(b[:])
 	} else {
 		buf2 := bytes.NewBuffer(nil)
