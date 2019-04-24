@@ -2,7 +2,9 @@ package nmdc
 
 import (
 	"fmt"
+	"net"
 	"net/url"
+	"strconv"
 	"strings"
 )
 
@@ -33,6 +35,18 @@ func NormalizeAddr(addr string) (string, error) {
 	u, err := ParseAddr(addr)
 	if err != nil {
 		return "", err
+	}
+	host, _, err := net.SplitHostPort(u.Host)
+	if err != nil {
+		var err2 error
+		host, _, err2 = net.SplitHostPort(u.Host + ":" + strconv.Itoa(DefaultPort))
+		if err2 != nil {
+			return "", err
+		}
+		err = nil
+	}
+	if host == "" {
+		return "", fmt.Errorf("no hostname in address: %q", addr)
 	}
 	return u.String(), nil
 }
