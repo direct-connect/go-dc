@@ -17,18 +17,22 @@ func init() {
 	RegisterMessage(&TTHSearchPassive{})
 }
 
-type DataType byte
+type DataType uint
 
 const (
-	DataTypeAny        = DataType('1')
-	DataTypeAudio      = DataType('2')
-	DataTypeCompressed = DataType('3')
-	DataTypeDocument   = DataType('4')
-	DataTypeExecutable = DataType('5')
-	DataTypePicture    = DataType('6')
-	DataTypeVideo      = DataType('7')
-	DataTypeFolders    = DataType('8')
-	DataTypeTTH        = DataType('9')
+	DataTypeAny        = DataType(1)
+	DataTypeAudio      = DataType(2)
+	DataTypeCompressed = DataType(3)
+	DataTypeDocument   = DataType(4)
+	DataTypeExecutable = DataType(5)
+	DataTypePicture    = DataType(6)
+	DataTypeVideo      = DataType(7)
+	DataTypeFolders    = DataType(8)
+	DataTypeTTH        = DataType(9)
+	DataTypeDiskImage  = DataType(10)
+	DataTypeComics     = DataType(11)
+	DataTypeBook       = DataType(12)
+	DataTypeMagnet     = DataType(13)
 )
 
 type Search struct {
@@ -74,9 +78,9 @@ func (m *Search) MarshalNMDC(enc *TextEncoder, buf *bytes.Buffer) error {
 	bi := strconv.AppendUint(b[:5], m.Size, 10)
 	bi = append(bi, '?')
 	if m.DataType == 0 {
-		bi = append(bi, byte(DataTypeAny))
+		bi = strconv.AppendUint(bi, uint64(DataTypeAny), 10)
 	} else {
-		bi = append(bi, byte(m.DataType))
+		bi = strconv.AppendUint(bi, uint64(m.DataType), 10)
 	}
 	bi = append(bi, '?')
 	buf.Write(bi)
@@ -123,8 +127,8 @@ func (m *Search) UnmarshalNMDC(dec *TextDecoder, data []byte) error {
 }
 
 func (m *Search) unmarshalString(dec *TextDecoder, data []byte) error {
-	fields, ok := splitN(data, '?', 5)
-	if !ok {
+	fields := bytes.SplitN(data, []byte{'?'}, 5)
+	if len(fields) < 5 {
 		return errors.New("invalid search string")
 	}
 	var field []byte
@@ -156,10 +160,11 @@ func (m *Search) unmarshalString(dec *TextDecoder, data []byte) error {
 	}
 
 	next()
-	if len(field) != 1 {
-		return fmt.Errorf("invalid data type: %q", string(field))
+	typ, err := parseUin64Trim(field)
+	if err != nil {
+		return err
 	}
-	m.DataType = DataType(field[0])
+	m.DataType = DataType(typ)
 
 	next()
 	if m.DataType == DataTypeTTH {

@@ -389,6 +389,31 @@ var casesMessages = []struct {
 		},
 	},
 	{
+		typ:  "Search",
+		name: "TTH trailing sep",
+		data: `Hub:SomeNick F?T?0?10?word`,
+		msg: &Search{
+			User:           "SomeNick",
+			SizeRestricted: false,
+			IsMaxSize:      true,
+			DataType:       DataTypeDiskImage,
+			Pattern:        "word",
+		},
+	},
+	{
+		typ:     "Search",
+		name:    "magnet link",
+		data:    `Hub:SomeNick F?T?0?1?magnet:?xt=urn:btih:493C8841D2058D79EA6F7D7103C48D9465B65D41&dn=some$name`,
+		expData: `Hub:SomeNick F?T?0?1?magnet:?xt=urn:btih:493C8841D2058D79EA6F7D7103C48D9465B65D41&amp;dn=some$name`,
+		msg: &Search{
+			User:           "SomeNick",
+			SizeRestricted: false,
+			IsMaxSize:      true,
+			DataType:       DataTypeAny,
+			Pattern:        "magnet:?xt=urn:btih:493C8841D2058D79EA6F7D7103C48D9465B65D41&dn=some name",
+		},
+	},
+	{
 		typ:  "SA",
 		name: "Short TTH search (active)",
 		data: `LWPNACQDBZRYXW3VHJVCJ64QBZNGHOHHHZWCLNQ 1.2.3.4:412`,
