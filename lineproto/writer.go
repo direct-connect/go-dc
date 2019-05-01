@@ -7,8 +7,12 @@ import (
 )
 
 func NewWriter(w io.Writer) *Writer {
+	return NewWriterSize(w, 0)
+}
+
+func NewWriterSize(w io.Writer, buf int) *Writer {
 	return &Writer{
-		w: w, bw: bufio.NewWriter(w),
+		w: w, bw: bufio.NewWriterSize(w, buf),
 	}
 }
 

@@ -10,8 +10,12 @@ import (
 )
 
 func NewWriter(w io.Writer) *Writer {
+	return NewWriterSize(w, 0)
+}
+
+func NewWriterSize(w io.Writer, buf int) *Writer {
 	return &Writer{
-		Writer: lineproto.NewWriter(w),
+		Writer: lineproto.NewWriterSize(w, buf),
 	}
 }
 
