@@ -95,10 +95,12 @@ func (m *FailOver) UnmarshalNMDC(_ *TextDecoder, data []byte) error {
 	return nil
 }
 
+const zonName = "ZOn"
+
 type ZOn struct {
 	NoArgs
 }
 
 func (*ZOn) Type() string {
-	return "ZOn"
+	return zonName
 }

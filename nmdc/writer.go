@@ -2,6 +2,7 @@ package nmdc
 
 import (
 	"bytes"
+	"compress/zlib"
 	"errors"
 	"io"
 	"sync/atomic"
@@ -73,6 +74,20 @@ func (w *Writer) WriteMsg(msg ...Message) error {
 		}
 	}
 	return nil
+}
+
+// ZOn enables compression on this writer.
+func (w *Writer) ZOn() error {
+	return w.ZOnLevel(zlib.DefaultCompression)
+}
+
+// ZOnLevel enables compression with a given level on this writer.
+func (w *Writer) ZOnLevel(lvl int) error {
+	if err := w.WriteLine([]byte("$" + zonName + "|")); err != nil {
+		return err
+	}
+	// flushes
+	return w.EnableZlibLevel(lvl)
 }
 
 func escapeString(sw *bytes.Buffer, s string) error {
