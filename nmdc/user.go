@@ -15,7 +15,6 @@ func init() {
 	RegisterMessage(&MyNick{})
 	RegisterMessage(&Quit{})
 	RegisterMessage(&MyINFO{})
-	RegisterMessage(&UserIP{})
 }
 
 // ValidateNick is sent from the client to the hub as a request to enter with a specific
@@ -367,39 +366,5 @@ func (m *MyINFO) unmarshalTag(tag []byte) error {
 		}
 	}
 	m.Client.Name = string(client)
-	return nil
-}
-
-type UserIP struct {
-	Name string
-	IP   string
-}
-
-func (*UserIP) Type() string {
-	return "UserIP"
-}
-
-func (m *UserIP) MarshalNMDC(enc *TextEncoder, buf *bytes.Buffer) error {
-	if err := Name(m.Name).MarshalNMDC(enc, buf); err != nil {
-		return err
-	}
-	buf.WriteString(" ")
-	buf.WriteString(m.IP)
-	buf.WriteString("$$")
-	return nil
-}
-
-func (m *UserIP) UnmarshalNMDC(dec *TextDecoder, data []byte) error {
-	data = bytes.TrimSuffix(data, []byte("$$"))
-	i := bytes.LastIndex(data, []byte(" "))
-	if i >= 0 {
-		m.IP = string(data[i+1:])
-		data = data[:i]
-	}
-	var name Name
-	if err := name.UnmarshalNMDC(dec, data); err != nil {
-		return err
-	}
-	m.Name = string(name)
 	return nil
 }

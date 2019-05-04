@@ -31,10 +31,18 @@ var casesMessages = []struct {
 	},
 	{
 		typ:  "UserIP",
-		data: `john doe 192.168.1.2$$`,
+		data: `john doe 192.168.1.2$$user 2 192.168.1.3$$`,
 		msg: &UserIP{
-			Name: "john doe",
-			IP:   "192.168.1.2",
+			List: []UserAddress{
+				{
+					Name: "john doe",
+					IP:   "192.168.1.2",
+				},
+				{
+					Name: "user 2",
+					IP:   "192.168.1.3",
+				},
+			},
 		},
 	},
 	{

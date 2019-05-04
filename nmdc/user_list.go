@@ -6,6 +6,7 @@ func init() {
 	RegisterMessage(&GetNickList{})
 	RegisterMessage(&OpList{})
 	RegisterMessage(&BotList{})
+	RegisterMessage(&UserIP{})
 }
 
 // GetNickList is sent by the client to the hub to retrieve a list of online users.
@@ -76,5 +77,51 @@ func (m *Names) UnmarshalNMDC(dec *TextDecoder, data []byte) error {
 		list = append(list, string(name))
 	}
 	*m = list
+	return nil
+}
+
+type UserAddress struct {
+	Name string
+	IP   string
+}
+
+type UserIP struct {
+	List []UserAddress
+}
+
+func (*UserIP) Type() string {
+	return "UserIP"
+}
+
+func (m *UserIP) MarshalNMDC(enc *TextEncoder, buf *bytes.Buffer) error {
+	for _, a := range m.List {
+		if err := Name(a.Name).MarshalNMDC(enc, buf); err != nil {
+			return err
+		}
+		buf.WriteString(" ")
+		buf.WriteString(a.IP)
+		buf.WriteString("$$")
+	}
+	return nil
+}
+
+func (m *UserIP) UnmarshalNMDC(dec *TextDecoder, data []byte) error {
+	data = bytes.TrimSuffix(data, []byte("$$"))
+	sub := bytes.Split(data, []byte("$$"))
+	m.List = make([]UserAddress, 0, len(sub))
+	for _, s := range sub {
+		var a UserAddress
+		i := bytes.LastIndex(s, []byte(" "))
+		if i >= 0 {
+			a.IP = string(s[i+1:])
+			s = s[:i]
+		}
+		var name Name
+		if err := name.UnmarshalNMDC(dec, s); err != nil {
+			return err
+		}
+		a.Name = string(name)
+		m.List = append(m.List, a)
+	}
 	return nil
 }
