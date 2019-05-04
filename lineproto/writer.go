@@ -25,11 +25,12 @@ type Writer struct {
 	// The function may return (false, nil) to skip writing the message.
 	onLine []func(line []byte) (bool, error)
 
-	w      io.Writer
-	bw     *bufio.Writer
-	err    error
-	zlibOn bool
-	zlibW  *zlib.Writer
+	w       io.Writer
+	bw      *bufio.Writer
+	err     error
+	zlibOn  bool
+	zlibW   *zlib.Writer
+	zlibLvl int
 }
 
 // OnLine registers a hook that is called each time a raw protocol message is written.
@@ -50,6 +51,11 @@ func (w *Writer) Err() error {
 
 // EnableZlib activates zlib deflating.
 func (w *Writer) EnableZlib() error {
+	return w.EnableZlibLevel(zlib.DefaultCompression)
+}
+
+// EnableZlib activates zlib deflating with a given compression level.
+func (w *Writer) EnableZlibLevel(lvl int) error {
 	if w.zlibOn {
 		return errZlibAlreadyActive
 	}
@@ -57,8 +63,13 @@ func (w *Writer) EnableZlib() error {
 		return err
 	}
 	w.zlibOn = true
-	if w.zlibW == nil {
-		w.zlibW = zlib.NewWriter(w.w)
+	if w.zlibW == nil || w.zlibLvl != lvl {
+		z, err := zlib.NewWriterLevel(w.w, lvl)
+		if err != nil {
+			return err
+		}
+		w.zlibW = z
+		w.zlibLvl = lvl
 	} else {
 		w.zlibW.Reset(w.w)
 	}
