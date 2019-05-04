@@ -6,6 +6,7 @@ import (
 
 func init() {
 	RegisterMessage(&Hello{})
+	RegisterMessage(&ZOn{})
 	RegisterMessage(&Version{})
 	RegisterMessage(&HubName{})
 	RegisterMessage(&HubTopic{})
@@ -92,4 +93,12 @@ func (m *FailOver) UnmarshalNMDC(_ *TextDecoder, data []byte) error {
 		m.Host = append(m.Host, string(host))
 	}
 	return nil
+}
+
+type ZOn struct {
+	NoArgs
+}
+
+func (*ZOn) Type() string {
+	return "ZOn"
 }
