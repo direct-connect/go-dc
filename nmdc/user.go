@@ -156,22 +156,26 @@ func (m *MyINFO) MarshalNMDC(enc *TextEncoder, buf *bytes.Buffer) error {
 	}
 
 	bi = append(bi[:0], ">$ $"...)
-	bi = append(bi, m.Conn...)
+	buf.Write(bi)
+	bi = bi[:0]
+
+	if err := String(m.Conn).MarshalNMDC(enc, buf); err != nil {
+		return err
+	}
+
 	if m.Flag == 0 {
 		bi = append(bi, byte(FlagStatusNormal))
 	} else {
 		bi = append(bi, byte(m.Flag))
 	}
 	bi = append(bi, '$')
-	if len(m.Email)+1 >= cap(bi)-len(bi) {
-		buf.Write(bi)
-		bi = bi[:0]
-	}
-	bi = append(bi, m.Email...)
-	bi = append(bi, '$')
-
 	buf.Write(bi)
 	bi = bi[:0]
+
+	if err := String(m.Email).MarshalNMDC(enc, buf); err != nil {
+		return err
+	}
+	bi = append(bi, '$')
 
 	bi = strconv.AppendUint(bi, m.ShareSize, 10)
 	bi = append(bi, '$')
@@ -256,11 +260,19 @@ func (m *MyINFO) UnmarshalNMDC(dec *TextDecoder, data []byte) error {
 	if len(field) > 0 {
 		l := len(field)
 		m.Flag = UserFlag(field[l-1])
-		m.Conn = string(field[:l-1])
+		s = ""
+		if err := s.UnmarshalNMDC(dec, field[:l-1]); err != nil {
+			return err
+		}
+		m.Conn = string(s)
 	}
 
 	next()
-	m.Email = string(field)
+	s = ""
+	if err := s.UnmarshalNMDC(dec, field); err != nil {
+		return err
+	}
+	m.Email = string(s)
 
 	next()
 	if len(field) != 0 {
