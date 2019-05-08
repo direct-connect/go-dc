@@ -23,6 +23,9 @@ func ParseAddr(addr string) (*url.URL, error) {
 	if err != nil {
 		return nil, err
 	}
+	if u.Scheme == "nmdc" {
+		u.Scheme = SchemeNMDC
+	}
 	if u.Scheme != SchemeNMDC && u.Scheme != SchemeNMDCS {
 		return u, fmt.Errorf("unsupported protocol: %q", u.Scheme)
 	}
