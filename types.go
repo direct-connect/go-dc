@@ -1,6 +1,5 @@
 package dc
 
-type Software struct {
-	Name    string `json:"name"`
-	Version string `json:"vers,omitempty"`
-}
+import "github.com/direct-connect/go-dc/types"
+
+type Software = types.Software

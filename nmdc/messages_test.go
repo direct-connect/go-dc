@@ -7,8 +7,8 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/direct-connect/go-dc"
 	"github.com/direct-connect/go-dc/tiger"
+	"github.com/direct-connect/go-dc/types"
 )
 
 var casesMessages = []struct {
@@ -94,7 +94,7 @@ var casesMessages = []struct {
 			I2:   0,
 			I3:   1,
 			I4:   2721,
-			Soft: dc.Software{
+			Soft: types.Software{
 				Name: "PtokaX",
 			},
 		},
@@ -112,7 +112,7 @@ var casesMessages = []struct {
 			I2:   0,
 			I3:   0,
 			I4:   0,
-			Soft: dc.Software{
+			Soft: types.Software{
 				Name:    "Verlihub",
 				Version: "1.1.0.12",
 			},
@@ -134,7 +134,7 @@ var casesMessages = []struct {
 			I2:   32212254720,
 			I3:   3,
 			I4:   40,
-			Soft: dc.Software{
+			Soft: types.Software{
 				Name:    "YnHub",
 				Version: "1.0364",
 			},
@@ -148,7 +148,7 @@ var casesMessages = []struct {
 		msg: &MyINFO{
 			Name: "johndoe",
 			Desc: "RU",
-			Client: dc.Software{
+			Client: types.Software{
 				Name:    "ApexDC++",
 				Version: "0.4.0",
 			},
@@ -185,7 +185,7 @@ var casesMessages = []struct {
 		msg: &MyINFO{
 			Name: "whist",
 			Desc: "RU [29]some desc",
-			Client: dc.Software{
+			Client: types.Software{
 				Name:    "GreylynkDC++",
 				Version: "2.3.5",
 			},
@@ -202,7 +202,7 @@ var casesMessages = []struct {
 		expData: `$ALL vespa9347q1 <StrgDC++ V:,M:A,H:1/0/0,S:2>$ $0.01.$$37038592310$`,
 		msg: &MyINFO{
 			Name: "vespa9347q1",
-			Client: dc.Software{
+			Client: types.Software{
 				Name: "StrgDC++",
 			},
 			Mode:           UserModeActive,
@@ -256,7 +256,7 @@ var casesMessages = []struct {
 		expData: `$ALL N8611 <++ V:0.868,M:A,H:34/0/0,S:3>$ $0.005.$$27225945203$`,
 		msg: &MyINFO{
 			Name: "N8611",
-			Client: dc.Software{
+			Client: types.Software{
 				Name:    "++",
 				Version: "0.868",
 			},

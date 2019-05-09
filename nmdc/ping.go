@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/direct-connect/go-dc"
+	"github.com/direct-connect/go-dc/types"
 )
 
 func init() {
@@ -32,7 +32,7 @@ type HubINFO struct {
 	I2       int // TODO
 	I3       int // TODO
 	I4       int // TODO
-	Soft     dc.Software
+	Soft     types.Software
 	Owner    string
 	State    string // TODO
 	Encoding string

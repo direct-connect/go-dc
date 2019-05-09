@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/direct-connect/go-dc"
+	"github.com/direct-connect/go-dc/types"
 )
 
 func init() {
@@ -92,7 +92,7 @@ const (
 type MyINFO struct {
 	Name           string
 	Desc           string
-	Client         dc.Software
+	Client         types.Software
 	Mode           UserMode
 	HubsNormal     int
 	HubsRegistered int

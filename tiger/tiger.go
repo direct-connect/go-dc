@@ -2,6 +2,7 @@
 package tiger
 
 import (
+	"bytes"
 	"encoding"
 	"encoding/base32"
 	"encoding/hex"
@@ -112,9 +113,17 @@ func (h *Hash) UnmarshalText(text []byte) error {
 	return h.FromBase32(string(text))
 }
 
-func (h *Hash) UnmarshalAdc(s []byte) error {
-	return h.FromBase32(string(s))
+// MarshalADC implements adc.Marshaler.
+func (h Hash) MarshalADC(buf *bytes.Buffer) error {
+	var b [Base32Size]byte
+	if err := h.MarshalBase32(b[:]); err != nil {
+		return err
+	}
+	buf.Write(b[:])
+	return nil
 }
-func (h Hash) MarshalAdc() ([]byte, error) {
-	return []byte(h.Base32()), nil
+
+// UnmarshalADC implements adc.Unmarshaler.
+func (h *Hash) UnmarshalADC(buf []byte) error {
+	return h.UnmarshalBase32(buf)
 }

@@ -14,7 +14,7 @@ const (
 	DefaultPort = 411     // default port for client-hub connections
 )
 
-// ParseAddr parses an NMDC address an a URL. It will assume a dchub:// scheme if none is set.
+// ParseAddr parses an NMDC address as a URL. It will assume a dchub:// scheme if none is set.
 func ParseAddr(addr string) (*url.URL, error) {
 	if !strings.Contains(addr, "://") {
 		addr = SchemeNMDC + "://" + addr
