@@ -14,6 +14,7 @@ func init() {
 	RegisterMessage(&ValidateDenide{})
 	RegisterMessage(&MyNick{})
 	RegisterMessage(&Quit{})
+	RegisterMessage(&LogedIn{})
 	RegisterMessage(&MyINFO{})
 }
 
@@ -53,6 +54,14 @@ type Quit struct {
 
 func (*Quit) Type() string {
 	return "Quit"
+}
+
+type LogedIn struct {
+	Name
+}
+
+func (*LogedIn) Type() string {
+	return "LogedIn"
 }
 
 type UserMode byte
