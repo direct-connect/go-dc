@@ -153,9 +153,19 @@ func (m *Search) unmarshalString(dec *TextDecoder, data []byte) error {
 
 	next()
 	if len(field) != 0 {
-		m.Size, err = parseUin64Trim(field)
-		if err != nil {
-			return err
+		if field[0] == '-' {
+			// some clients send SizeRestricted=true and Size=-1
+			_, err = parseUin64Trim(field[1:])
+			if err != nil {
+				return err
+			}
+			m.SizeRestricted = false
+			m.Size = 0
+		} else {
+			m.Size, err = parseUin64Trim(field)
+			if err != nil {
+				return err
+			}
 		}
 	}
 
