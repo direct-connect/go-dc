@@ -108,6 +108,7 @@ func (m *UserIP) MarshalNMDC(enc *TextEncoder, buf *bytes.Buffer) error {
 }
 
 func (m *UserIP) UnmarshalNMDC(dec *TextDecoder, data []byte) error {
+	data = bytes.TrimSuffix(data, []byte("\r"))
 	data = bytes.TrimSuffix(data, []byte("$$"))
 	sub := bytes.Split(data, []byte("$$"))
 	m.List = make([]UserAddress, 0, len(sub))
