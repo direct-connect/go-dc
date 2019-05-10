@@ -78,6 +78,14 @@ func IsRegistered(typ string) bool {
 	return ok
 }
 
+// IsRegisteredBytes is like IsRegistered but accepts a byte slice.
+func IsRegisteredBytes(typ []byte) bool {
+	_, ok := messages[string(typ)]
+	return ok
+}
+
+var _ Message = (*RawMessage)(nil)
+
 // RawMessage is a raw NMDC message in the connection encoding.
 type RawMessage struct {
 	Typ  string
