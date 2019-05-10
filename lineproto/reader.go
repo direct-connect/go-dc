@@ -10,8 +10,8 @@ import (
 )
 
 const (
-	readBuf = 2048 // TCP MTU is ~1500
-	maxLine = readBuf * 16
+	readBuf    = 2048 // TCP MTU is ~1500
+	maxLineDef = readBuf * 16
 )
 
 var (
@@ -107,7 +107,8 @@ func (r *bufReader) Scan(delim byte) ([]byte, bool, error) {
 // Reader is a line reader that supports the zlib on/off switching procedure
 // required by hub-to-client and client-to-client connections.
 type Reader struct {
-	delim byte
+	delim   byte
+	maxLine int
 
 	cur        *bufReader // current reader; set either to original or compressed
 	original   *bufReader // original reader with buffer
@@ -127,10 +128,16 @@ func NewReader(r io.Reader, delim byte) *Reader {
 	br := newBufReader(r)
 	return &Reader{
 		delim:    delim,
+		maxLine:  maxLineDef,
 		original: br,
 		cur:      br,
 		line:     make([]byte, readBuf),
 	}
+}
+
+// SetMaxLine sets the max allowed protocol line length. Values <= 0 mean no limit.
+func (r *Reader) SetMaxLine(sz int) {
+	r.maxLine = sz
 }
 
 // OnLine registers a hook that is called each time a raw protocol line is read from the connection.
@@ -150,7 +157,7 @@ func (r *Reader) ReadLine() ([]byte, error) {
 
 read:
 	for {
-		if len(r.line) >= maxLine {
+		if r.maxLine > 0 && len(r.line) >= r.maxLine {
 			return nil, errBufferExhausted
 		}
 		pref, more, err := r.cur.Scan(r.delim)
