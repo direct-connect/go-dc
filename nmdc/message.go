@@ -10,6 +10,8 @@ import (
 	"golang.org/x/text/encoding"
 )
 
+const lineDelim = '|'
+
 var (
 	messages = make(map[string]reflect.Type)
 )
@@ -125,10 +127,10 @@ func MarshalTo(enc *TextEncoder, buf *bytes.Buffer, m Message) error {
 	}
 	if n == buf.Len() {
 		// no payload
-		buf.Bytes()[n-1] = '|' // ' ' -> '|'
+		buf.Bytes()[n-1] = lineDelim // ' ' -> '|'
 		return nil
 	}
-	buf.WriteByte('|')
+	buf.WriteByte(lineDelim)
 	return nil
 }
 

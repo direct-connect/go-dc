@@ -43,7 +43,7 @@ func (e *errUnknownEncoding) Error() string {
 
 func NewReader(r io.Reader) *Reader {
 	return &Reader{
-		Reader:     lineproto.NewReader(r, '|'),
+		Reader:     lineproto.NewReader(r, lineDelim),
 		maxCmdName: maxCmdName,
 	}
 }
@@ -151,7 +151,7 @@ read:
 		line, err := r.ReadLine()
 		if err != nil {
 			return err
-		} else if n := len(line); n == 0 || line[n-1] != '|' {
+		} else if n := len(line); n == 0 || line[n-1] != lineDelim {
 			return &ErrProtocolViolation{
 				Err: errors.New("no message delimiter"),
 			}

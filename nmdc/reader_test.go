@@ -182,7 +182,7 @@ func BenchmarkReader(b *testing.B) {
 			buf.WriteByte(' ')
 			buf.WriteString(strconv.Itoa(rand.Int()))
 		}
-		buf.WriteByte('|')
+		buf.WriteByte(lineDelim)
 	}
 	data := buf.Bytes()
 
