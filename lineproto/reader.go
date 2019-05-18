@@ -16,6 +16,7 @@ const (
 )
 
 var (
+	errReaderClosed      = errors.New("reader is closed")
 	errBufferExhausted   = errors.New("message is too long")
 	errZlibAlreadyActive = errors.New("zlib already activated")
 	errZlibNotActive     = errors.New("zlib not activate")
@@ -136,6 +137,21 @@ func NewReader(r io.Reader, delim byte) *Reader {
 	}
 }
 
+// Close the reader and free associated resources.
+func (r *Reader) Close() error {
+	r.original = nil
+	r.cur = nil
+	r.compressed = nil
+
+	r.zlibOn = false
+	_ = r.zlib.Close()
+	r.zlib = nil
+
+	r.onLine = nil
+	r.line = nil
+	return nil
+}
+
 // SetMaxLine sets the max allowed protocol line length. Values <= 0 mean no limit.
 func (r *Reader) SetMaxLine(sz int) {
 	r.maxLine = sz
@@ -154,6 +170,9 @@ func (r *Reader) OnLine(fnc func(line []byte) (bool, error)) {
 // a delimiter and is in the connection encoding. The buffer is only valid until the next
 // call to Read or ReadLine.
 func (r *Reader) ReadLine() ([]byte, error) {
+	if r.original == nil {
+		return nil, errReaderClosed
+	}
 	r.line = r.line[:0]
 
 read:
@@ -193,6 +212,9 @@ read:
 // Read reads a byte slice, inflates it if zlib is active, and puts the
 // result into buf.
 func (r *Reader) Read(buf []byte) (int, error) {
+	if r.original == nil {
+		return 0, errReaderClosed
+	}
 	n, err := r.cur.Read(buf)
 	if err == io.EOF && r.zlibOn {
 		// if compression was enabled, we need to switch back to original reader
@@ -212,7 +234,9 @@ func (r *Reader) Read(buf []byte) (int, error) {
 
 // EnableZlib activates zlib inflating.
 func (r *Reader) EnableZlib() error {
-	if r.zlibOn {
+	if r.original == nil {
+		return errReaderClosed
+	} else if r.zlibOn {
 		return errZlibAlreadyActive
 	}
 	r.zlibOn = true
@@ -242,6 +266,9 @@ func (r *Reader) EnableZlib() error {
 // Binary returns a binary reader locked to the given amount of bytes.
 // Caller must close the reader. Reader will automatically drain any unread bytes.
 func (r *Reader) Binary(sz uint64) (io.ReadCloser, error) {
+	if r.original == nil {
+		return nil, errReaderClosed
+	}
 	return &binaryReader{r: io.LimitReader(r, int64(sz))}, nil
 }
 

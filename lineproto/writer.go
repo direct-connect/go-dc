@@ -3,7 +3,12 @@ package lineproto
 import (
 	"bufio"
 	"compress/zlib"
+	"errors"
 	"io"
+)
+
+var (
+	errWriterClosed = errors.New("writer is closed")
 )
 
 func NewWriter(w io.Writer) *Writer {
@@ -46,7 +51,25 @@ func (w *Writer) setError(err error) {
 	w.err = err
 }
 
+// Err returns the last encountered error.
 func (w *Writer) Err() error {
+	return w.err
+}
+
+// Close flushes the writer and frees its resources. It won't close the underlying writer.
+func (w *Writer) Close() error {
+	w.err = errWriterClosed
+	if w.zlibOn {
+		if err := w.zlibW.Close(); err != nil {
+			return err
+		}
+		w.zlibOn = false
+		w.zlibW = nil
+	}
+	w.bw = nil
+	w.cur = nil
+	w.w = nil
+	w.onLine = nil
 	return w.err
 }
 
@@ -57,7 +80,9 @@ func (w *Writer) EnableZlib() error {
 
 // EnableZlib activates zlib deflating with a given compression level.
 func (w *Writer) EnableZlibLevel(lvl int) error {
-	if w.zlibOn {
+	if w.err != nil {
+		return w.err
+	} else if w.zlibOn {
 		return errZlibAlreadyActive
 	}
 	if err := w.Flush(); err != nil {
@@ -81,7 +106,9 @@ func (w *Writer) EnableZlibLevel(lvl int) error {
 
 // DisableZlib deactivates zlib deflating.
 func (w *Writer) DisableZlib() error {
-	if !w.zlibOn {
+	if w.err != nil {
+		return w.err
+	} else if !w.zlibOn {
 		return errZlibNotActive
 	}
 	err := w.bw.Flush()
@@ -131,6 +158,9 @@ func (w *Writer) Flush() error {
 // Write the data to the connection. It will flush any remaining buffer and will bypass
 // buffering for this call.
 func (w *Writer) Write(p []byte) (int, error) {
+	if w.err != nil {
+		return 0, w.err
+	}
 	if w.bw.Buffered() != 0 {
 		if err := w.Flush(); err != nil {
 			return 0, err
@@ -141,8 +171,8 @@ func (w *Writer) Write(p []byte) (int, error) {
 
 // WriteLine writes a single protocol message.
 func (w *Writer) WriteLine(data []byte) error {
-	if err := w.Err(); err != nil {
-		return err
+	if w.err != nil {
+		return w.err
 	}
 	for _, fnc := range w.onLine {
 		if ok, err := fnc(data); err != nil {
