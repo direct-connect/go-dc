@@ -3,6 +3,8 @@ package lineproto
 import (
 	"bytes"
 	"github.com/stretchr/testify/require"
+	"io"
+	"io/ioutil"
 	"testing"
 )
 
@@ -18,6 +20,10 @@ func TestReader(t *testing.T) {
 		206, 207, 205, 77, 204, 75, 81, 40, 73, 45,
 		46, 169, 1, 4, 0, 0, 255, 255, 69, 30, 7, 66}...)
 	byts = append(byts, []byte("$Uncompressed2|")...)
+	byts = append(byts, []byte("binary")...)
+	byts = append(byts, []byte("$command3|")...)
+	byts = append(byts, []byte("2nary")...)
+	byts = append(byts, []byte("$command4|")...)
 
 	r := NewReader(bytes.NewReader(byts), '|')
 
@@ -40,4 +46,31 @@ func TestReader(t *testing.T) {
 
 	expect("$OtherCommand test|")
 	expect("$Uncompressed2|")
+
+	// test binary reader
+	rc, err := r.Binary(6)
+	require.NoError(t, err)
+
+	data, err := ioutil.ReadAll(io.LimitReader(rc, 7))
+	require.NoError(t, err)
+	require.Equal(t, "binary", string(data))
+
+	err = rc.Close()
+	require.NoError(t, err)
+
+	expect("$command3|")
+
+	// test binary reader drain
+	rc, err = r.Binary(5)
+	require.NoError(t, err)
+
+	// partial read
+	data, err = ioutil.ReadAll(io.LimitReader(rc, 3))
+	require.NoError(t, err)
+	require.Equal(t, "2na", string(data))
+
+	err = rc.Close()
+	require.NoError(t, err)
+
+	expect("$command4|")
 }

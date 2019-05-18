@@ -12,7 +12,7 @@ func NewWriter(w io.Writer) *Writer {
 
 func NewWriterSize(w io.Writer, buf int) *Writer {
 	return &Writer{
-		w: w, bw: bufio.NewWriterSize(w, buf),
+		w: w, cur: w, bw: bufio.NewWriterSize(w, buf),
 	}
 }
 
@@ -26,7 +26,8 @@ type Writer struct {
 	onLine []func(line []byte) (bool, error)
 
 	w       io.Writer
-	bw      *bufio.Writer
+	cur     io.Writer     // active writer underlying the bw
+	bw      *bufio.Writer // buffered writer on top of cur
 	err     error
 	zlibOn  bool
 	zlibW   *zlib.Writer
@@ -73,7 +74,8 @@ func (w *Writer) EnableZlibLevel(lvl int) error {
 	} else {
 		w.zlibW.Reset(w.w)
 	}
-	w.bw.Reset(w.zlibW)
+	w.cur = w.zlibW
+	w.bw.Reset(w.cur)
 	return nil
 }
 
@@ -93,7 +95,8 @@ func (w *Writer) DisableZlib() error {
 		return err
 	}
 	w.zlibOn = false
-	w.bw.Reset(w.w)
+	w.cur = w.w
+	w.bw.Reset(w.cur)
 	return nil
 }
 
@@ -125,6 +128,17 @@ func (w *Writer) Flush() error {
 	return err
 }
 
+// Write the data to the connection. It will flush any remaining buffer and will bypass
+// buffering for this call.
+func (w *Writer) Write(p []byte) (int, error) {
+	if w.bw.Buffered() != 0 {
+		if err := w.Flush(); err != nil {
+			return 0, err
+		}
+	}
+	return w.cur.Write(p)
+}
+
 // WriteLine writes a single protocol message.
 func (w *Writer) WriteLine(data []byte) error {
 	if err := w.Err(); err != nil {
@@ -146,7 +160,6 @@ func (w *Writer) WriteLine(data []byte) error {
 		}
 		defer w.Timeout(false)
 	}
-	// buffer not empty - write to it
 	_, err := w.bw.Write(data)
 	if err != nil {
 		w.setError(err)

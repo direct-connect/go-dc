@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/ioutil"
 )
 
 const (
@@ -236,4 +237,23 @@ func (r *Reader) EnableZlib() error {
 	}
 	r.cur = r.compressed
 	return nil
+}
+
+// Binary returns a binary reader locked to the given amount of bytes.
+// Caller must close the reader. Reader will automatically drain any unread bytes.
+func (r *Reader) Binary(sz uint64) (io.ReadCloser, error) {
+	return &binaryReader{r: io.LimitReader(r, int64(sz))}, nil
+}
+
+type binaryReader struct {
+	r io.Reader
+}
+
+func (r *binaryReader) Read(p []byte) (int, error) {
+	return r.r.Read(p)
+}
+
+func (r *binaryReader) Close() error {
+	_, err := io.Copy(ioutil.Discard, r.r)
+	return err
 }
