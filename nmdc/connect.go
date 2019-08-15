@@ -122,7 +122,7 @@ func (m *RevConnectToMe) MarshalNMDC(enc *TextEncoder, buf *bytes.Buffer) error 
 	if err := Name(m.From).MarshalNMDC(enc, buf); err != nil {
 		return err
 	}
-	buf.WriteString(" ")
+	buf.WriteByte(' ')
 	if err := Name(m.To).MarshalNMDC(enc, buf); err != nil {
 		return err
 	}
