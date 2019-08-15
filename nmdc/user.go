@@ -114,7 +114,7 @@ func (m *MyINFO) MarshalNMDC(enc *TextEncoder, buf *bytes.Buffer) error {
 	if err := Name(m.Name).MarshalNMDC(enc, buf); err != nil {
 		return err
 	}
-	buf.WriteString(" ")
+	buf.WriteByte(' ')
 	if err := String(m.Desc).MarshalNMDC(enc, buf); err != nil {
 		return err
 	}

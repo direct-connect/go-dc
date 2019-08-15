@@ -46,7 +46,7 @@ func (m *Lock) MarshalNMDC(_ *TextEncoder, buf *bytes.Buffer) error {
 	}
 	if m.Ref != "" {
 		if m.PK == "" {
-			buf.WriteString(" ")
+			buf.WriteByte(' ')
 		}
 		buf.WriteString("Ref=")
 		buf.WriteString(m.Ref)

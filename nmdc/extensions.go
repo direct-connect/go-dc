@@ -50,7 +50,7 @@ func (m *Supports) MarshalNMDC(_ *TextEncoder, buf *bytes.Buffer) error {
 	buf.Grow(n)
 	for i, ext := range m.Ext {
 		if i != 0 {
-			buf.WriteString(" ")
+			buf.WriteByte(' ')
 		}
 		buf.WriteString(ext)
 	}

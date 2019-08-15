@@ -100,7 +100,7 @@ func (m *UserIP) MarshalNMDC(enc *TextEncoder, buf *bytes.Buffer) error {
 		if err := Name(a.Name).MarshalNMDC(enc, buf); err != nil {
 			return err
 		}
-		buf.WriteString(" ")
+		buf.WriteByte(' ')
 		buf.WriteString(a.IP)
 		buf.WriteString("$$")
 	}

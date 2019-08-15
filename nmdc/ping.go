@@ -70,7 +70,7 @@ func (m *HubINFO) MarshalNMDC(enc *TextEncoder, buf *bytes.Buffer) error {
 		buf.WriteString(m.Soft.Name)
 	} else {
 		buf.WriteString(m.Soft.Name)
-		buf.WriteString(" ")
+		buf.WriteByte(' ')
 		buf.WriteString(m.Soft.Version)
 	}
 

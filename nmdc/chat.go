@@ -199,7 +199,7 @@ func (m *MCTo) MarshalNMDC(enc *TextEncoder, buf *bytes.Buffer) error {
 		return err
 	}
 
-	buf.WriteString(" ")
+	buf.WriteByte(' ')
 	if err := String(m.Text).MarshalNMDC(enc, buf); err != nil {
 		return err
 	}
