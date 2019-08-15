@@ -9,6 +9,7 @@ func init() {
 	RegisterMessage(&ZOn{})
 	RegisterMessage(&Version{})
 	RegisterMessage(&HubName{})
+	RegisterMessage(&HubIsFull{})
 	RegisterMessage(&HubTopic{})
 	RegisterMessage(&FailOver{})
 }
@@ -27,6 +28,14 @@ type HubName struct {
 
 func (*HubName) Type() string {
 	return "HubName"
+}
+
+type HubIsFull struct {
+	NoArgs
+}
+
+func (*HubIsFull) Type() string {
+	return "HubIsFull"
 }
 
 type Version struct {
