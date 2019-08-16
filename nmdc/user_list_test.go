@@ -6,6 +6,27 @@ import (
 
 var userListCases = []casesMessageEntry{
 	{
+		typ:  "OpList",
+		data: "$$",
+		msg: &OpList{
+			Names: nil,
+		},
+	},
+	{
+		typ:  "OpList",
+		data: "Op 1$$",
+		msg: &OpList{
+			Names: []string{"Op 1"},
+		},
+	},
+	{
+		typ:  "OpList",
+		data: "Op 1$$Op 2$$",
+		msg: &OpList{
+			Names: []string{"Op 1", "Op 2"},
+		},
+	},
+	{
 		typ:  "UserIP",
 		data: `john doe 192.168.1.2$$user 2 192.168.1.3$$`,
 		msg: &UserIP{

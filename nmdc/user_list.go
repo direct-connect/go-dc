@@ -62,11 +62,13 @@ func (m Names) MarshalNMDC(enc *TextEncoder, buf *bytes.Buffer) error {
 }
 
 func (m *Names) UnmarshalNMDC(dec *TextDecoder, data []byte) error {
+	data = bytes.TrimSuffix(data, []byte("$$"))
+
 	if len(data) == 0 {
 		*m = nil
 		return nil
 	}
-	data = bytes.TrimSuffix(data, []byte("$$"))
+
 	sub := bytes.Split(data, []byte("$$"))
 	list := make([]string, 0, len(sub))
 	for _, b := range sub {
