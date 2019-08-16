@@ -11,7 +11,6 @@ func init() {
 }
 
 var (
-	_ Message     = UserInfoMod{}
 	_ Marshaler   = UserInfoMod{}
 	_ Unmarshaler = (*UserInfoMod)(nil)
 )
@@ -53,8 +52,6 @@ const (
 	AwayTypeNormal   AwayType = 1
 	AwayTypeExtended AwayType = 2
 )
-
-var _ Message = UserInfo{}
 
 type UserInfo struct {
 	Id   CID    `adc:"ID"`
@@ -112,8 +109,6 @@ func (u *UserInfo) Normalize() {
 		}
 	}
 }
-
-var _ Message = HubInfo{}
 
 type HubInfo struct {
 	Name        string   `adc:"NI,req"`

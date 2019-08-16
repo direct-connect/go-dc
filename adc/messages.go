@@ -52,7 +52,6 @@ func UnmarshalMessage(name MsgType, data []byte) (Message, error) {
 }
 
 var (
-	_ Message     = (*RawMessage)(nil)
 	_ Marshaler   = (*RawMessage)(nil)
 	_ Unmarshaler = (*RawMessage)(nil)
 )
@@ -149,7 +148,6 @@ func (f *Fields) UnmarshalADC(data []byte) error {
 }
 
 var (
-	_ Message     = Supported{}
 	_ Marshaler   = Supported{}
 	_ Unmarshaler = (*Supported)(nil)
 )
@@ -179,7 +177,6 @@ const (
 )
 
 var (
-	_ Message     = Status{}
 	_ Marshaler   = Status{}
 	_ Unmarshaler = (*Status)(nil)
 )
@@ -234,7 +231,6 @@ func (st *Status) UnmarshalADC(s []byte) error {
 }
 
 var (
-	_ Message     = ZOn{}
 	_ Marshaler   = ZOn{}
 	_ Unmarshaler = (*ZOn)(nil)
 )
@@ -248,7 +244,6 @@ func (ZOn) Cmd() MsgType {
 }
 
 var (
-	_ Message     = ZOff{}
 	_ Marshaler   = ZOff{}
 	_ Unmarshaler = (*ZOff)(nil)
 )

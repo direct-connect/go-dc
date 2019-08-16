@@ -131,8 +131,6 @@ func DecodePacketRaw(p []byte) (Packet, error) {
 	return m, nil
 }
 
-var _ Packet = (*InfoPacket)(nil)
-
 type InfoPacket struct {
 	Msg Message
 }
@@ -192,8 +190,6 @@ func (p *InfoPacket) UnmarshalPacketADC(name MsgType, data []byte) error {
 	p.Msg = &RawMessage{Type: name, Data: data}
 	return nil
 }
-
-var _ Packet = (*HubPacket)(nil)
 
 type HubPacket InfoPacket
 
@@ -533,8 +529,6 @@ func (p *EchoPacket) UnmarshalPacketADC(name MsgType, data []byte) error {
 	return nil
 }
 
-var _ Packet = (*ClientPacket)(nil)
-
 type ClientPacket struct {
 	Msg Message
 }
@@ -730,8 +724,6 @@ func (p *FeaturePacket) UnmarshalPacketADC(name MsgType, data []byte) error {
 	p.Msg = &RawMessage{Type: name, Data: data}
 	return nil
 }
-
-var _ Packet = (*UDPPacket)(nil)
 
 type UDPPacket struct {
 	ID  CID

@@ -15,7 +15,6 @@ func init() {
 }
 
 var (
-	_ Message     = SIDAssign{}
 	_ Marshaler   = SIDAssign{}
 	_ Unmarshaler = (*SIDAssign)(nil)
 )
@@ -35,8 +34,6 @@ func (m SIDAssign) MarshalADC(buf *bytes.Buffer) error {
 func (m *SIDAssign) UnmarshalADC(data []byte) error {
 	return m.SID.UnmarshalADC(data)
 }
-
-var _ Message = UserCommand{}
 
 type Category int
 
@@ -63,7 +60,6 @@ func (UserCommand) Cmd() MsgType {
 var base32Enc = base32.StdEncoding.WithPadding(base32.NoPadding)
 
 var (
-	_ Message     = GetPassword{}
 	_ Marshaler   = GetPassword{}
 	_ Unmarshaler = (*GetPassword)(nil)
 )
@@ -91,8 +87,6 @@ func (m *GetPassword) UnmarshalADC(data []byte) error {
 	return err
 }
 
-var _ Message = Password{}
-
 type Password struct {
 	Hash tiger.Hash `adc:"#"`
 }
@@ -100,10 +94,6 @@ type Password struct {
 func (Password) Cmd() MsgType {
 	return MsgType{'P', 'A', 'S'}
 }
-
-var (
-	_ Message = Disconnect{}
-)
 
 type Disconnect struct {
 	ID       SID    `adc:"#"`

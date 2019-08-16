@@ -10,8 +10,6 @@ func init() {
 	RegisterMessage(GetResponse{})
 }
 
-var _ Message = GetInfoRequest{}
-
 type GetInfoRequest struct {
 	Type string `adc:"#"`
 	Path string `adc:"#"`
@@ -20,8 +18,6 @@ type GetInfoRequest struct {
 func (GetInfoRequest) Cmd() MsgType {
 	return MsgType{'G', 'F', 'I'}
 }
-
-var _ Message = GetRequest{}
 
 type GetRequest struct {
 	Type  string `adc:"#"`
@@ -33,8 +29,6 @@ type GetRequest struct {
 func (GetRequest) Cmd() MsgType {
 	return MsgType{'G', 'E', 'T'}
 }
-
-var _ Message = GetResponse{}
 
 type GetResponse GetRequest
 

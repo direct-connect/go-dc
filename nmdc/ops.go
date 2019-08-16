@@ -8,8 +8,6 @@ func init() {
 	RegisterMessage(&ForceMove{})
 }
 
-var _ Message = (*ForceMove)(nil)
-
 type ForceMove struct {
 	Address string
 }
