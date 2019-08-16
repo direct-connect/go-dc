@@ -78,8 +78,6 @@ func IsRegistered(typ string) bool {
 	return ok
 }
 
-var _ Message = (*RawMessage)(nil)
-
 // RawMessage is a raw NMDC message in the connection encoding.
 type RawMessage struct {
 	Typ  string

@@ -28,8 +28,6 @@ const (
 	FileTypeDir  FileType = 2
 )
 
-var _ Message = SearchRequest{}
-
 type SearchRequest struct {
 	Token string   `adc:"TO"`
 	And   []string `adc:"AN"`
@@ -53,8 +51,6 @@ type SearchRequest struct {
 func (SearchRequest) Cmd() MsgType {
 	return MsgType{'S', 'C', 'H'}
 }
-
-var _ Message = SearchResult{}
 
 type SearchResult struct {
 	Token string `adc:"TO"`

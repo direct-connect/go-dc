@@ -5,8 +5,6 @@ func init() {
 	RegisterMessage(ConnectRequest{})
 }
 
-var _ Message = RevConnectRequest{}
-
 type RevConnectRequest struct {
 	Proto string `adc:"#"`
 	Token string `adc:"#"`
@@ -15,8 +13,6 @@ type RevConnectRequest struct {
 func (RevConnectRequest) Cmd() MsgType {
 	return MsgType{'R', 'C', 'M'}
 }
-
-var _ Message = ConnectRequest{}
 
 type ConnectRequest struct {
 	Proto string `adc:"#"`
