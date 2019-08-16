@@ -9,6 +9,7 @@ import (
 
 func init() {
 	RegisterMessage(SIDAssign{})
+	RegisterMessage(UserCommand{})
 	RegisterMessage(GetPassword{})
 	RegisterMessage(Password{})
 	RegisterMessage(Disconnect{})
