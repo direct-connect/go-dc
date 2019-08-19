@@ -38,6 +38,17 @@ var filesCases = []casesMessageEntry{
 			Compressed: false,
 		},
 	},
+	{
+		"get response",
+		`file TTH/BR4BVJBMHDFVCFI4WBPSL63W5TWXWVBSC574BLI 124 12352 ZL1`,
+		&GetResponse{
+			Type:       "file",
+			Path:       "TTH/BR4BVJBMHDFVCFI4WBPSL63W5TWXWVBSC574BLI",
+			Start:      124,
+			Bytes:      12352,
+			Compressed: true,
+		},
+	},
 }
 
 func TestFilesUnmarshal(t *testing.T) {

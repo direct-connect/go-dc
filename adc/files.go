@@ -109,3 +109,11 @@ type GetResponse GetRequest
 func (GetResponse) Cmd() MsgType {
 	return MsgType{'S', 'N', 'D'}
 }
+
+func (m GetResponse) MarshalADC(buf *bytes.Buffer) error {
+	return GetRequest(m).MarshalADC(buf)
+}
+
+func (m *GetResponse) UnmarshalADC(data []byte) error {
+	return (*GetRequest)(m).UnmarshalADC(data)
+}
