@@ -1,12 +1,11 @@
-package adc_test
+package adc
 
 import (
 	"bytes"
-	"github.com/stretchr/testify/require"
 	"testing"
 
-	. "github.com/direct-connect/go-dc/adc"
 	"github.com/direct-connect/go-dc/adc/types"
+	"github.com/stretchr/testify/require"
 )
 
 const delim = "\n"
