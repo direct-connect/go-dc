@@ -10,17 +10,19 @@ import (
 	"github.com/direct-connect/go-dc/lineproto"
 )
 
+// NewWriter creates a new NMDC protocol writer with a default buffer size.
 func NewWriter(w io.Writer) *Writer {
 	return NewWriterSize(w, 0)
 }
 
+// NewWriterSize creates a new NMDC protocol writer with a specified buffer size.
 func NewWriterSize(w io.Writer, buf int) *Writer {
 	return &Writer{
 		Writer: lineproto.NewWriterSize(w, buf),
 	}
 }
 
-// Writer is not safe for concurrent use.
+// Writer is protocol message writer for NMDC protocol. It's not safe for a concurrent use.
 type Writer struct {
 	*lineproto.Writer
 
