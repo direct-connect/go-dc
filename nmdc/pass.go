@@ -4,7 +4,6 @@ func init() {
 	RegisterMessage(&MyPass{})
 	RegisterMessage(&BadPass{})
 	RegisterMessage(&GetPass{})
-	RegisterMessage(&LogedIn{})
 }
 
 type MyPass struct {
@@ -29,12 +28,4 @@ type GetPass struct {
 
 func (*GetPass) Type() string {
 	return "GetPass"
-}
-
-type LogedIn struct {
-	Name
-}
-
-func (*LogedIn) Type() string {
-	return "LogedIn"
 }
