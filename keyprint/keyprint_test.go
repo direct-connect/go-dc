@@ -1,0 +1,37 @@
+package keyprint
+
+import (
+	"strings"
+	"testing"
+
+	"github.com/stretchr/testify/require"
+)
+
+func TestFromFile(t *testing.T) {
+	const file = `-----BEGIN CERTIFICATE-----
+MIIDADCCAeigAwIBAgIRANQAK+zMKkAAleGstpikPicwDQYJKoZIhvcNAQELBQAw
+ETEPMA0GA1UEChMGR28gSHViMB4XDTE5MDIwODE1MjIxNloXDTIwMDEzMDE1MjIx
+NlowETEPMA0GA1UEChMGR28gSHViMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIB
+CgKCAQEAz5ferpAcWhT705lz9IkeOemj25lk8Tnxiwl1HOYA21PFdtjtOeflOjGF
+GoQQyPo5eKq0nFQrcBX/5vrMPgu0TAxeeFDklV/qBxnYchzk34v+dZqDx3s7flVh
+Ap4/DhUIFDS3KGpv3aI1Ib9yNUnTHHvKJajIiLovlwIHv9w+uyK7yre8jdSHQ3qp
+m4TadSrmj1rhurS0Lw7QAvLqlRyquzTo3BRvvVDt3Ych9Uc8xgpVrri6CxVUR7hb
+ikLaAa4/uHsNT4FXheyrrwM2sPj8ffkqevW6Igrl0MG5wV6RWRrQjQLhxu4Gt5Zu
+JhNN/mo4KOO5gLyl2aRK8L2MgYnMPwIDAQABo1MwUTAOBgNVHQ8BAf8EBAMCAoQw
+HQYDVR0lBBYwFAYIKwYBBQUHAwEGCCsGAQUFBwMCMA8GA1UdEwEB/wQFMAMBAf8w
+DwYDVR0RBAgwBocEfwAAATANBgkqhkiG9w0BAQsFAAOCAQEAS8a8y3U88X//jvvu
+ZM87JXjAD9CmV5X6LTMmGOobXn9RxQJdTQfXUkN1PX5FXLog0IBp/jvrZQUIi4b2
+oyO6pqpAxrdAKeCNaqQK4c4nwltVoUuHwujr6H/7A0xZvZJ8vmhBGBiyS51NSREN
+SD8jnos2YZwNzPGzwCea2BjpTkH+wm/tMbFuh8UPVe8NhxlQlVRUkoHRpjJn2e/V
++y8Paky4k0h99HXw51Kbq4hVoHGbdrIj3jCEXL6/6sxT+7m1Hg205ouPDSKNO/2V
+Xd0iUCmoX6xJlIF8lto1wjK6Dg2/4q/vKEMv85+54veEQPLC9I/Ze8YxemBNpWBA
+FQfn1A==
+-----END CERTIFICATE-----
+`
+
+	kps, err := FromFile(strings.NewReader(file))
+	require.NoError(t, err)
+	require.Equal(t, []string{
+		"SHA256/NDH32RHLIEZCAIJQIAABJPHOHUJSL5UZMWXHI6HALQEW65LN3TLA",
+	}, kps)
+}
