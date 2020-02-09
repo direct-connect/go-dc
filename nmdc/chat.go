@@ -55,16 +55,18 @@ func (m *ChatMessage) UnmarshalNMDC(dec *TextDecoder, data []byte) error {
 	if len(data) != 0 && data[0] == '<' {
 		data = data[1:]
 		var (
-			i    int
-			off  = 0
-			base = 0
+			i    int // index where name ends
+			off  = 0 // space between the name and the message
+			base = 0 // index of the previous '>' character +1
 		)
 		// found next '>' character and check that the next one is a whitespace
 		for base < len(data) {
-			j := bytes.IndexByte(data[base:], '>')
-			if j < 0 {
+			j := bytes.IndexAny(data[base:], ">\r\n")
+			if j < 0 || data[base+j] != '>' {
 				// no '>' characters followed by a space
-				// use the last one (which is base-1)
+				// or
+				// the closest character is line break
+				// use the last '>' character, which is not followed by space (at index base-1)
 				if base == 0 {
 					return &ErrProtocolViolation{
 						Err: errors.New("name in chat message should have a closing token"),

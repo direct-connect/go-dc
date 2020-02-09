@@ -9,7 +9,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -95,12 +94,22 @@ var casesReader = []struct {
 		},
 	},
 	{
-		name:  "chat",
+		name:  "chat name with separators",
 		input: "<b >b >> text|",
 		exp: []Message{
 			&ChatMessage{
 				Name: "b >b >",
 				Text: "text",
+			},
+		},
+	},
+	{
+		name:  "chat no space and break",
+		input: "<bob>some text\r\nthis is formatting>>> some more text|",
+		exp: []Message{
+			&ChatMessage{
+				Name: "bob",
+				Text: "some text\r\nthis is formatting>>> some more text",
 			},
 		},
 	},
@@ -156,9 +165,9 @@ func TestReader(t *testing.T) {
 				got = append(got, m)
 			}
 			if c.err == nil {
-				assert.NoError(t, gerr)
+				require.NoError(t, gerr)
 			} else {
-				assert.Equal(t, c.err, gerr)
+				require.Equal(t, c.err, gerr)
 			}
 			require.Equal(t, c.exp, got, "\n%q\nvs\n%q", c.exp, got)
 		})
