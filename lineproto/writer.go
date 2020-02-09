@@ -58,10 +58,13 @@ func (w *Writer) Err() error {
 
 // Close flushes the writer and frees its resources. It won't close the underlying writer.
 func (w *Writer) Close() error {
-	w.err = errWriterClosed
+	last := w.bw.Flush()
+	if w.err == nil {
+		w.err = errWriterClosed
+	}
 	if w.zlibOn {
 		if err := w.zlibW.Close(); err != nil {
-			return err
+			last = err
 		}
 		w.zlibOn = false
 		w.zlibW = nil
@@ -70,7 +73,7 @@ func (w *Writer) Close() error {
 	w.cur = nil
 	w.w = nil
 	w.onLine = nil
-	return w.err
+	return last
 }
 
 // EnableZlib activates zlib deflating.

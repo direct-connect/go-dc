@@ -2,6 +2,7 @@ package lineproto
 
 import (
 	"bytes"
+	"io"
 	"net"
 	"strings"
 	"sync/atomic"
@@ -81,6 +82,45 @@ func TestWriterZlib(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "$Compressed3|", string(l))
 	require.True(t, r.zlibOn)
+}
+
+func TestWriterZlibClose(t *testing.T) {
+	buf := bytes.NewBuffer(nil)
+	w := NewWriter(buf)
+
+	var lines []string
+
+	write := func(s string) {
+		err := w.WriteLine([]byte(s))
+		require.NoError(t, err)
+		lines = append(lines, s)
+	}
+
+	err := w.EnableZlib()
+	require.NoError(t, err)
+
+	write("$CommandOne test1|")
+	err = w.Flush()
+	require.NoError(t, err)
+	write("$CommandTwo test2|")
+
+	err = w.Close()
+	require.NoError(t, err)
+
+	r := NewReader(buf, '|')
+	err = r.EnableZlib()
+	require.NoError(t, err)
+
+	var got []string
+	for {
+		line, err := r.ReadLine()
+		if err == io.EOF {
+			break
+		}
+		require.NoError(t, err)
+		got = append(got, string(line))
+	}
+	require.Equal(t, lines, got)
 }
 
 func TestWriterTimeout(t *testing.T) {
