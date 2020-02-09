@@ -133,6 +133,25 @@ var userCases = []casesMessageEntry{
 			ShareSize:  27225945203,
 		},
 	},
+	{
+		typ:  "MyINFO",
+		name: "duplicate tag in desc",
+		data: "$ALL user some,desc,<go-dcpp V:0.20.1,M:A,H:2/1/0,S:6><go-dcpp V:0.20.1,M:A,H:2/1/0,S:6>$ $\x04$$324882100000$",
+		msg: &MyINFO{
+			Name: "user",
+			Desc: "some,desc,<go-dcpp V:0.20.1,M:A,H:2/1/0,S:6>",
+			Client: types.Software{
+				Name:    "go-dcpp",
+				Version: "0.20.1",
+			},
+			Mode:           UserModeActive,
+			HubsNormal:     2,
+			HubsRegistered: 1,
+			Slots:          6,
+			Flag:           '\x04',
+			ShareSize:      324882100000,
+		},
+	},
 }
 
 func TestUserUnmarshal(t *testing.T) {

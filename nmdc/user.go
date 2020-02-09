@@ -231,7 +231,7 @@ func (m *MyINFO) UnmarshalNMDC(dec *TextDecoder, data []byte) error {
 	m.Mode = UserModeUnknown
 	hasTag := false
 	var desc []byte
-	i = bytes.IndexByte(field, '<')
+	i = bytes.LastIndexByte(field, '<')
 	if i < 0 {
 		desc = field
 	} else {
