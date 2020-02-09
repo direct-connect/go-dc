@@ -144,8 +144,10 @@ func (r *Reader) Close() error {
 	r.compressed = nil
 
 	r.zlibOn = false
-	_ = r.zlib.Close()
-	r.zlib = nil
+	if r.zlib != nil {
+		_ = r.zlib.Close()
+		r.zlib = nil
+	}
 
 	r.onLine = nil
 	r.line = nil
