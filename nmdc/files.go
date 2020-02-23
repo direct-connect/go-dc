@@ -14,11 +14,12 @@ func init() {
 }
 
 type ADCGet struct {
-	ContentType String
-	Identifier  String
-	Start       uint64
-	Length      int64
-	Compressed  bool
+	ContentType     String
+	Identifier      String
+	Start           uint64
+	Length          int64
+	Compressed      bool
+	DownloadedBytes *uint64
 }
 
 func (*ADCGet) Type() string {
@@ -37,16 +38,23 @@ func (m *ADCGet) MarshalNMDC(enc *TextEncoder, buf *bytes.Buffer) error {
 	buf.WriteString(strconv.FormatUint(m.Start, 10))
 	buf.WriteByte(' ')
 	buf.WriteString(strconv.FormatInt(m.Length, 10))
+
 	if m.Compressed {
 		buf.Write([]byte(" ZL1"))
 	}
+
+	if m.DownloadedBytes != nil {
+		buf.Write([]byte(" DB"))
+		buf.WriteString(strconv.FormatUint(*m.DownloadedBytes, 10))
+	}
+
 	return nil
 }
 
 func (m *ADCGet) UnmarshalNMDC(dec *TextDecoder, data []byte) error {
 	i := bytes.IndexByte(data, ' ')
 	if i < 0 {
-		return errors.New("ADCGet: missing separator after field 1")
+		return errors.New("ADCGet: missing separator after field 'ContentType'")
 	}
 	contentType, data := data[:i], data[i+1:]
 	if err := m.ContentType.UnmarshalNMDC(dec, contentType); err != nil {
@@ -55,7 +63,7 @@ func (m *ADCGet) UnmarshalNMDC(dec *TextDecoder, data []byte) error {
 
 	i = bytes.IndexByte(data, ' ')
 	if i < 0 {
-		return errors.New("ADCGet: missing separator after field 2")
+		return errors.New("ADCGet: missing separator after field 'Identifier'")
 	}
 	identifier, data := data[:i], data[i+1:]
 	if err := m.Identifier.UnmarshalNMDC(dec, identifier); err != nil {
@@ -64,13 +72,13 @@ func (m *ADCGet) UnmarshalNMDC(dec *TextDecoder, data []byte) error {
 
 	i = bytes.IndexByte(data, ' ')
 	if i < 0 {
-		return errors.New("ADCGet: missing separator after field 3")
+		return errors.New("ADCGet: missing separator after field 'Start'")
 	}
 	start, data := data[:i], data[i+1:]
 	var err error
 	m.Start, err = parseUin64Trim(start)
 	if err != nil {
-		return errors.New("ADCGet: unable to parse field 3")
+		return errors.New("ADCGet: unable to parse field 'Start'")
 	}
 
 	i = bytes.IndexByte(data, ' ')
@@ -85,16 +93,32 @@ func (m *ADCGet) UnmarshalNMDC(dec *TextDecoder, data []byte) error {
 	} else {
 		lengthNum, err := parseUin64Trim(length)
 		if err != nil {
-			return errors.New("ADCGet: unable to parse field 4")
+			return errors.New("ADCGet: unable to parse field 'Lenght'")
 		}
 		m.Length = int64(lengthNum)
 	}
 
-	if len(data) > 0 {
-		if !bytes.Equal(data, []byte("ZL1")) {
-			return errors.New("ADCGet: invalid field 5")
+	// optional fields / flags
+	for len(data) > 0 {
+		i = bytes.IndexByte(data, ' ')
+		var field []byte
+		if i < 0 {
+			field, data = data[:], nil
+		} else {
+			field, data = data[:i], data[i+1:]
 		}
-		m.Compressed = true
+
+		if bytes.Equal(field, []byte("ZL1")) {
+			m.Compressed = true
+
+		} else if bytes.HasPrefix(field, []byte("DB")) {
+			field = field[2:]
+			dlBytes, err := parseUin64Trim(field)
+			if err != nil {
+				return errors.New("ADCGet: unable to parse field 'DownloadedBytes'")
+			}
+			m.DownloadedBytes = &dlBytes
+		}
 	}
 
 	return nil

@@ -47,6 +47,38 @@ var filesCases = []casesMessageEntry{
 		},
 	},
 	{
+		typ:  "ADCGET",
+		data: `file TTH/BR4BVJBMHDFVCFI4WBPSL63W5TWXWVBSC574BLI 123523 65 ZL1 DB15`,
+		msg: &ADCGet{
+			ContentType: "file",
+			Identifier:  "TTH/BR4BVJBMHDFVCFI4WBPSL63W5TWXWVBSC574BLI",
+			Start:       123523,
+			Length:      65,
+			Compressed:  true,
+			DownloadedBytes: func() *uint64 {
+				ret := new(uint64)
+				*ret = 15
+				return ret
+			}(),
+		},
+	},
+	{
+		typ:  "ADCGET",
+		data: `file TTH/BR4BVJBMHDFVCFI4WBPSL63W5TWXWVBSC574BLI 123523 65 DB15`,
+		msg: &ADCGet{
+			ContentType: "file",
+			Identifier:  "TTH/BR4BVJBMHDFVCFI4WBPSL63W5TWXWVBSC574BLI",
+			Start:       123523,
+			Length:      65,
+			Compressed:  false,
+			DownloadedBytes: func() *uint64 {
+				ret := new(uint64)
+				*ret = 15
+				return ret
+			}(),
+		},
+	},
+	{
 		typ:  "ADCSND",
 		data: `file TTH/BR4BVJBMHDFVCFI4WBPSL63W5TWXWVBSC574BLI 123523 65`,
 		msg: &ADCSnd{
