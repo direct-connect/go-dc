@@ -114,6 +114,12 @@ func (r *bufReader) Scan(delim byte) ([]byte, bool, error) {
 	return buf, false, nil
 }
 
+type LineReader interface {
+	ReadLine() ([]byte, error)
+}
+
+var _ LineReader = (*Reader)(nil)
+
 // Reader is a line reader that supports the zlib on/off switching procedure
 // required by hub-to-client and client-to-client connections.
 type Reader struct {

@@ -11,6 +11,11 @@ var (
 	errWriterClosed = errors.New("writer is closed")
 )
 
+type LineWriter interface {
+	WriteLine(data []byte) error
+	Flush() error
+}
+
 func NewWriter(w io.Writer) *Writer {
 	return NewWriterSize(w, 0)
 }
@@ -20,6 +25,8 @@ func NewWriterSize(w io.Writer, buf int) *Writer {
 		w: w, cur: w, bw: bufio.NewWriterSize(w, buf),
 	}
 }
+
+var _ LineWriter = (*Writer)(nil)
 
 // Writer is not safe for concurrent use.
 type Writer struct {
