@@ -22,12 +22,20 @@ var (
 	errZlibNotActive     = errors.New("zlib not activate")
 )
 
+var _ interface {
+	Unwrap() error
+} = (*ErrProtocolViolation)(nil)
+
 type ErrProtocolViolation struct {
 	Err error
 }
 
 func (e *ErrProtocolViolation) Error() string {
 	return fmt.Sprintf("protocol error: %v", e.Err)
+}
+
+func (e *ErrProtocolViolation) Unwrap() error {
+	return e.Err
 }
 
 var (
