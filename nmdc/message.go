@@ -10,7 +10,8 @@ import (
 	"golang.org/x/text/encoding"
 )
 
-const lineDelim = '|'
+// Delimiter of the NMDC protocol.
+const Delimiter = '|'
 
 var (
 	messages = make(map[string]reflect.Type)
@@ -127,10 +128,10 @@ func MarshalTo(enc *TextEncoder, buf *bytes.Buffer, m Message) error {
 	}
 	if n == buf.Len() {
 		// no payload
-		buf.Bytes()[n-1] = lineDelim // ' ' -> '|'
+		buf.Bytes()[n-1] = Delimiter // ' ' -> '|'
 		return nil
 	}
-	buf.WriteByte(lineDelim)
+	buf.WriteByte(Delimiter)
 	return nil
 }
 

@@ -56,7 +56,7 @@ func (w *Writer) SetEncoder(enc *TextEncoder) {
 // WriteKeepAlive writes an empty (keep alive) message.
 // It is caller's responsibility to flush the writer.
 func (w *Writer) WriteKeepAlive() error {
-	return w.WriteLine([]byte{lineDelim})
+	return w.WriteLine([]byte{Delimiter})
 }
 
 // WriteMsg encodes and writes a NMDC protocol message.

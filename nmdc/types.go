@@ -28,14 +28,14 @@ var legacyUnescaper = strings.NewReplacer(
 	"/%DCN005%/", "\x05",
 	"/%DCN036%/", "$",
 	"/%DCN096%/", "`",
-	"/%DCN124%/", string(lineDelim),
+	"/%DCN124%/", string(Delimiter),
 	"/%DCN126%/", "~",
 )
 
 var escapeCharsString = [256]string{
 	'&':       "&amp;",
 	'$':       "&#36;",
-	lineDelim: "&#124;",
+	Delimiter: "&#124;",
 }
 
 var escapeCharsName = [256]string{
@@ -43,7 +43,7 @@ var escapeCharsName = [256]string{
 	'<':       "&lt;",
 	'>':       "&gt;",
 	'$':       "&#36;",
-	lineDelim: "&#124;",
+	Delimiter: "&#124;",
 }
 
 func UnescapeBytes(b []byte) []byte {
