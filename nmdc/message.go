@@ -3,11 +3,8 @@ package nmdc
 import (
 	"bytes"
 	"fmt"
-	"io"
 	"reflect"
 	"sort"
-
-	"golang.org/x/text/encoding"
 )
 
 // Delimiter of the NMDC protocol.
@@ -15,12 +12,6 @@ const Delimiter = '|'
 
 var (
 	messages = make(map[string]reflect.Type)
-)
-
-// these two aliases allows package users to omit x/text import
-type (
-	TextEncoder = encoding.Encoder
-	TextDecoder = encoding.Decoder
 )
 
 // Message is an interface for all NMDC protocol messages.
@@ -31,11 +22,11 @@ type Message interface {
 	// MarshalNMDC encodes NMDC protocol message using provided text encoding into a buffer.
 	// Message should only encode it's payload without a command name or '|' delimiter.
 	// If encoder is nil, UTF-8 encoding is assumed.
-	MarshalNMDC(enc *TextEncoder, buf *bytes.Buffer) error
+	MarshalNMDC(ec *Encoding, buf *bytes.Buffer) error
 	// UnmarshalNMDC decodes NMDC protocol message using provided text encoding.
 	// Buffer will only contain message payload without a command name or '|' delimiter.
 	// If decoder is nil, UTF-8 encoding is assumed.
-	UnmarshalNMDC(dec *TextDecoder, data []byte) error
+	UnmarshalNMDC(ec *Encoding, data []byte) error
 }
 
 // RegisterMessage registers a new protocol message type. It will be associated with a
@@ -101,13 +92,13 @@ func (m *RawMessage) Type() string {
 }
 
 // Type implements Message.
-func (m *RawMessage) MarshalNMDC(_ *TextEncoder, buf *bytes.Buffer) error {
+func (m *RawMessage) MarshalNMDC(_ *Encoding, buf *bytes.Buffer) error {
 	buf.Write(m.Data)
 	return nil
 }
 
 // Type implements Message.
-func (m *RawMessage) UnmarshalNMDC(_ *TextDecoder, data []byte) error {
+func (m *RawMessage) UnmarshalNMDC(_ *Encoding, data []byte) error {
 	m.Data = make([]byte, len(data))
 	copy(m.Data, data)
 	return nil
@@ -115,44 +106,38 @@ func (m *RawMessage) UnmarshalNMDC(_ *TextDecoder, data []byte) error {
 
 // MarshalTo encodes NMDC message into a buffer. It will write a command name,
 // a payload and '|' delimiter.
+//
+// Deprecated: use Encoding.MarshalTo
 func MarshalTo(enc *TextEncoder, buf *bytes.Buffer, m Message) error {
-	if typ := m.Type(); typ != "" {
-		buf.Grow(1 + len(typ) + 2)
-		buf.WriteByte('$')
-		buf.WriteString(typ)
-		buf.WriteByte(' ')
+	ec := DefaultEncoding()
+	if enc != nil {
+		ec = ec.Clone()
+		ec.setTextEncoder(enc)
 	}
-	n := buf.Len()
-	if err := m.MarshalNMDC(enc, buf); err != nil {
-		return err
-	}
-	if n == buf.Len() {
-		// no payload
-		buf.Bytes()[n-1] = Delimiter // ' ' -> '|'
-		return nil
-	}
-	buf.WriteByte(Delimiter)
-	return nil
+	return ec.MarshalTo(buf, m)
 }
 
 // Marshal encodes NMDC message. The resulting slice will contain a command name,
 // a payload and '|' delimiter.
+//
+// Deprecated: use Encoding.Marshal
 func Marshal(enc *TextEncoder, m Message) ([]byte, error) {
-	buf := bytes.NewBuffer(nil)
-	if err := MarshalTo(enc, buf, m); err != nil {
-		return nil, err
+	ec := DefaultEncoding()
+	if enc != nil {
+		ec = ec.Clone()
+		ec.setTextEncoder(enc)
 	}
-	return buf.Bytes(), nil
+	return ec.Marshal(m)
 }
 
 // Unmarshal decodes a single NMDC message from the buffer.
+//
+// Deprecated: use Encoding.Unmarshal
 func Unmarshal(dec *TextDecoder, data []byte) (Message, error) {
-	// TODO: implement separate decoder?
-	r := NewReader(bytes.NewReader(data))
-	r.SetDecoder(dec)
-	m, err := r.ReadMsg()
-	if err == io.EOF {
-		return nil, io.ErrUnexpectedEOF
+	ec := DefaultEncoding()
+	if dec != nil {
+		ec = ec.Clone()
+		ec.setTextDecoder(dec)
 	}
-	return m, err
+	return ec.Unmarshal(data)
 }

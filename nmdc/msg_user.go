@@ -118,13 +118,13 @@ func (*MyINFO) Type() string {
 	return "MyINFO"
 }
 
-func (m *MyINFO) MarshalNMDC(enc *TextEncoder, buf *bytes.Buffer) error {
+func (m *MyINFO) MarshalNMDC(ec *Encoding, buf *bytes.Buffer) error {
 	buf.WriteString("$ALL ")
-	if err := Name(m.Name).MarshalNMDC(enc, buf); err != nil {
+	if err := Name(m.Name).MarshalNMDC(ec, buf); err != nil {
 		return err
 	}
 	buf.WriteByte(' ')
-	if err := String(m.Desc).MarshalNMDC(enc, buf); err != nil {
+	if err := String(m.Desc).MarshalNMDC(ec, buf); err != nil {
 		return err
 	}
 	var b [24]byte
@@ -168,7 +168,7 @@ func (m *MyINFO) MarshalNMDC(enc *TextEncoder, buf *bytes.Buffer) error {
 	buf.Write(bi)
 	bi = bi[:0]
 
-	if err := String(m.Conn).MarshalNMDC(enc, buf); err != nil {
+	if err := String(m.Conn).MarshalNMDC(ec, buf); err != nil {
 		return err
 	}
 
@@ -181,7 +181,7 @@ func (m *MyINFO) MarshalNMDC(enc *TextEncoder, buf *bytes.Buffer) error {
 	buf.Write(bi)
 	bi = bi[:0]
 
-	if err := String(m.Email).MarshalNMDC(enc, buf); err != nil {
+	if err := String(m.Email).MarshalNMDC(ec, buf); err != nil {
 		return err
 	}
 	bi = append(bi, '$')
@@ -192,7 +192,7 @@ func (m *MyINFO) MarshalNMDC(enc *TextEncoder, buf *bytes.Buffer) error {
 	return nil
 }
 
-func (m *MyINFO) UnmarshalNMDC(dec *TextDecoder, data []byte) error {
+func (m *MyINFO) UnmarshalNMDC(ec *Encoding, data []byte) error {
 	const infoPref = "$ALL "
 	if !bytes.HasPrefix(data, []byte(infoPref)) {
 		return errors.New("invalid info command: wrong prefix")
@@ -204,7 +204,7 @@ func (m *MyINFO) UnmarshalNMDC(dec *TextDecoder, data []byte) error {
 		return errors.New("invalid info command: no separators")
 	}
 	var name Name
-	if err := name.UnmarshalNMDC(dec, data[:i]); err != nil {
+	if err := name.UnmarshalNMDC(ec, data[:i]); err != nil {
 		return err
 	}
 	data = data[i+1:]
@@ -249,7 +249,7 @@ func (m *MyINFO) UnmarshalNMDC(dec *TextDecoder, data []byte) error {
 		}
 	}
 	var s String
-	if err := s.UnmarshalNMDC(dec, desc); err != nil {
+	if err := s.UnmarshalNMDC(ec, desc); err != nil {
 		return err
 	}
 	m.Desc = string(s)
@@ -270,7 +270,7 @@ func (m *MyINFO) UnmarshalNMDC(dec *TextDecoder, data []byte) error {
 		l := len(field)
 		m.Flag = UserFlag(field[l-1])
 		s = ""
-		if err := s.UnmarshalNMDC(dec, field[:l-1]); err != nil {
+		if err := s.UnmarshalNMDC(ec, field[:l-1]); err != nil {
 			return err
 		}
 		m.Conn = string(s)
@@ -278,7 +278,7 @@ func (m *MyINFO) UnmarshalNMDC(dec *TextDecoder, data []byte) error {
 
 	next()
 	s = ""
-	if err := s.UnmarshalNMDC(dec, field); err != nil {
+	if err := s.UnmarshalNMDC(ec, field); err != nil {
 		return err
 	}
 	m.Email = string(s)

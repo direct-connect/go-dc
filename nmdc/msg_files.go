@@ -26,12 +26,12 @@ func (*ADCGet) Type() string {
 	return "ADCGET"
 }
 
-func (m *ADCGet) MarshalNMDC(enc *TextEncoder, buf *bytes.Buffer) error {
-	if err := m.ContentType.MarshalNMDC(enc, buf); err != nil {
+func (m *ADCGet) MarshalNMDC(ec *Encoding, buf *bytes.Buffer) error {
+	if err := m.ContentType.MarshalNMDC(ec, buf); err != nil {
 		return err
 	}
 	buf.WriteByte(' ')
-	if err := m.Identifier.MarshalNMDC(enc, buf); err != nil {
+	if err := m.Identifier.MarshalNMDC(ec, buf); err != nil {
 		return err
 	}
 	buf.WriteByte(' ')
@@ -51,13 +51,13 @@ func (m *ADCGet) MarshalNMDC(enc *TextEncoder, buf *bytes.Buffer) error {
 	return nil
 }
 
-func (m *ADCGet) UnmarshalNMDC(dec *TextDecoder, data []byte) error {
+func (m *ADCGet) UnmarshalNMDC(ec *Encoding, data []byte) error {
 	i := bytes.IndexByte(data, ' ')
 	if i < 0 {
 		return errors.New("ADCGet: missing separator after field 'ContentType'")
 	}
 	contentType, data := data[:i], data[i+1:]
-	if err := m.ContentType.UnmarshalNMDC(dec, contentType); err != nil {
+	if err := m.ContentType.UnmarshalNMDC(ec, contentType); err != nil {
 		return err
 	}
 
@@ -66,7 +66,7 @@ func (m *ADCGet) UnmarshalNMDC(dec *TextDecoder, data []byte) error {
 		return errors.New("ADCGet: missing separator after field 'Identifier'")
 	}
 	identifier, data := data[:i], data[i+1:]
-	if err := m.Identifier.UnmarshalNMDC(dec, identifier); err != nil {
+	if err := m.Identifier.UnmarshalNMDC(ec, identifier); err != nil {
 		return errors.New("ADCGet: unable to parse field 2")
 	}
 
@@ -136,12 +136,12 @@ func (*ADCSnd) Type() string {
 	return "ADCSND"
 }
 
-func (m *ADCSnd) MarshalNMDC(enc *TextEncoder, buf *bytes.Buffer) error {
-	if err := m.ContentType.MarshalNMDC(enc, buf); err != nil {
+func (m *ADCSnd) MarshalNMDC(ec *Encoding, buf *bytes.Buffer) error {
+	if err := m.ContentType.MarshalNMDC(ec, buf); err != nil {
 		return err
 	}
 	buf.WriteByte(' ')
-	if err := m.Identifier.MarshalNMDC(enc, buf); err != nil {
+	if err := m.Identifier.MarshalNMDC(ec, buf); err != nil {
 		return err
 	}
 	buf.WriteByte(' ')
@@ -154,13 +154,13 @@ func (m *ADCSnd) MarshalNMDC(enc *TextEncoder, buf *bytes.Buffer) error {
 	return nil
 }
 
-func (m *ADCSnd) UnmarshalNMDC(dec *TextDecoder, data []byte) error {
+func (m *ADCSnd) UnmarshalNMDC(ec *Encoding, data []byte) error {
 	i := bytes.IndexByte(data, ' ')
 	if i < 0 {
 		return errors.New("ADCSnd: missing separator after field 1")
 	}
 	contentType, data := data[:i], data[i+1:]
-	if err := m.ContentType.UnmarshalNMDC(dec, contentType); err != nil {
+	if err := m.ContentType.UnmarshalNMDC(ec, contentType); err != nil {
 		return err
 	}
 
@@ -169,7 +169,7 @@ func (m *ADCSnd) UnmarshalNMDC(dec *TextDecoder, data []byte) error {
 		return errors.New("ADCSnd: missing separator after field 2")
 	}
 	identifier, data := data[:i], data[i+1:]
-	if err := m.Identifier.UnmarshalNMDC(dec, identifier); err != nil {
+	if err := m.Identifier.UnmarshalNMDC(ec, identifier); err != nil {
 		return errors.New("ADCSnd: unable to parse field 2")
 	}
 
@@ -215,7 +215,7 @@ func (*Direction) Type() string {
 	return "Direction"
 }
 
-func (m *Direction) MarshalNMDC(_ *TextEncoder, buf *bytes.Buffer) error {
+func (m *Direction) MarshalNMDC(_ *Encoding, buf *bytes.Buffer) error {
 	if m.Upload {
 		buf.Write([]byte("Upload"))
 	} else {
@@ -226,7 +226,7 @@ func (m *Direction) MarshalNMDC(_ *TextEncoder, buf *bytes.Buffer) error {
 	return nil
 }
 
-func (m *Direction) UnmarshalNMDC(_ *TextDecoder, data []byte) error {
+func (m *Direction) UnmarshalNMDC(_ *Encoding, data []byte) error {
 	i := bytes.IndexByte(data, ' ')
 	if i < 0 {
 		return errors.New("Direction: missing field 1")

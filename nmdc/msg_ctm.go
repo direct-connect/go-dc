@@ -31,11 +31,11 @@ func (m *ConnectToMe) Type() string {
 	return "ConnectToMe"
 }
 
-func (m *ConnectToMe) MarshalNMDC(enc *TextEncoder, buf *bytes.Buffer) error {
+func (m *ConnectToMe) MarshalNMDC(ec *Encoding, buf *bytes.Buffer) error {
 	if m.Targ == "" {
 		return errors.New("ConnectToMe target should be set")
 	}
-	if err := Name(m.Targ).MarshalNMDC(enc, buf); err != nil {
+	if err := Name(m.Targ).MarshalNMDC(ec, buf); err != nil {
 		return err
 	}
 	buf.WriteByte(' ')
@@ -63,19 +63,19 @@ func (m *ConnectToMe) MarshalNMDC(enc *TextEncoder, buf *bytes.Buffer) error {
 		return errors.New("passive ConnectToMe requests should have a source")
 	}
 	buf.WriteByte(' ')
-	if err := Name(m.Src).MarshalNMDC(enc, buf); err != nil {
+	if err := Name(m.Src).MarshalNMDC(ec, buf); err != nil {
 		return err
 	}
 	return nil
 }
 
-func (m *ConnectToMe) UnmarshalNMDC(dec *TextDecoder, data []byte) error {
+func (m *ConnectToMe) UnmarshalNMDC(ec *Encoding, data []byte) error {
 	i := bytes.IndexByte(data, ' ')
 	if i < 0 {
 		return errors.New("invalid ConnectToMe command")
 	}
 	var name Name
-	if err := name.UnmarshalNMDC(dec, data[:i]); err != nil {
+	if err := name.UnmarshalNMDC(ec, data[:i]); err != nil {
 		return err
 	}
 	data = data[i+1:]
@@ -83,7 +83,7 @@ func (m *ConnectToMe) UnmarshalNMDC(dec *TextDecoder, data []byte) error {
 
 	if i := bytes.IndexByte(data, ' '); i >= 0 {
 		name = ""
-		if err := name.UnmarshalNMDC(dec, data[i+1:]); err != nil {
+		if err := name.UnmarshalNMDC(ec, data[i+1:]); err != nil {
 			return err
 		}
 		data = data[:i]
@@ -118,30 +118,30 @@ func (m *RevConnectToMe) Type() string {
 	return "RevConnectToMe"
 }
 
-func (m *RevConnectToMe) MarshalNMDC(enc *TextEncoder, buf *bytes.Buffer) error {
-	if err := Name(m.From).MarshalNMDC(enc, buf); err != nil {
+func (m *RevConnectToMe) MarshalNMDC(ec *Encoding, buf *bytes.Buffer) error {
+	if err := Name(m.From).MarshalNMDC(ec, buf); err != nil {
 		return err
 	}
 	buf.WriteByte(' ')
-	if err := Name(m.To).MarshalNMDC(enc, buf); err != nil {
+	if err := Name(m.To).MarshalNMDC(ec, buf); err != nil {
 		return err
 	}
 	return nil
 }
 
-func (m *RevConnectToMe) UnmarshalNMDC(dec *TextDecoder, data []byte) error {
+func (m *RevConnectToMe) UnmarshalNMDC(ec *Encoding, data []byte) error {
 	i := bytes.IndexByte(data, ' ')
 	if i < 0 {
 		return errors.New("invalid RevConnectToMe command")
 	}
 	var name Name
 
-	if err := name.UnmarshalNMDC(dec, data[:i]); err != nil {
+	if err := name.UnmarshalNMDC(ec, data[:i]); err != nil {
 		return err
 	}
 	m.From = string(name)
 
-	if err := name.UnmarshalNMDC(dec, data[i+1:]); err != nil {
+	if err := name.UnmarshalNMDC(ec, data[i+1:]); err != nil {
 		return err
 	}
 	m.To = string(name)

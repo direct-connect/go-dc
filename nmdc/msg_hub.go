@@ -46,12 +46,12 @@ func (*Version) Type() string {
 	return "Version"
 }
 
-func (m *Version) MarshalNMDC(_ *TextEncoder, buf *bytes.Buffer) error {
+func (m *Version) MarshalNMDC(_ *Encoding, buf *bytes.Buffer) error {
 	buf.WriteString(m.Vers)
 	return nil
 }
 
-func (m *Version) UnmarshalNMDC(_ *TextDecoder, data []byte) error {
+func (m *Version) UnmarshalNMDC(_ *Encoding, data []byte) error {
 	m.Vers = string(data)
 	return nil
 }
@@ -64,13 +64,13 @@ func (*HubTopic) Type() string {
 	return "HubTopic"
 }
 
-func (m *HubTopic) MarshalNMDC(enc *TextEncoder, buf *bytes.Buffer) error {
-	return String(m.Text).MarshalNMDC(enc, buf)
+func (m *HubTopic) MarshalNMDC(ec *Encoding, buf *bytes.Buffer) error {
+	return String(m.Text).MarshalNMDC(ec, buf)
 }
 
-func (m *HubTopic) UnmarshalNMDC(dec *TextDecoder, data []byte) error {
+func (m *HubTopic) UnmarshalNMDC(ec *Encoding, data []byte) error {
 	var s String
-	if err := s.UnmarshalNMDC(dec, data); err != nil {
+	if err := s.UnmarshalNMDC(ec, data); err != nil {
 		return err
 	}
 	m.Text = string(s)
@@ -85,7 +85,7 @@ func (*FailOver) Type() string {
 	return "FailOver"
 }
 
-func (m *FailOver) MarshalNMDC(_ *TextEncoder, buf *bytes.Buffer) error {
+func (m *FailOver) MarshalNMDC(_ *Encoding, buf *bytes.Buffer) error {
 	for i, s := range m.Host {
 		if i != 0 {
 			buf.WriteString(",")
@@ -95,7 +95,7 @@ func (m *FailOver) MarshalNMDC(_ *TextEncoder, buf *bytes.Buffer) error {
 	return nil
 }
 
-func (m *FailOver) UnmarshalNMDC(_ *TextDecoder, data []byte) error {
+func (m *FailOver) UnmarshalNMDC(_ *Encoding, data []byte) error {
 	hosts := bytes.Split(data, []byte(","))
 	m.Host = make([]string, 0, len(hosts))
 	for _, host := range hosts {
@@ -104,7 +104,10 @@ func (m *FailOver) UnmarshalNMDC(_ *TextDecoder, data []byte) error {
 	return nil
 }
 
-const zonName = "ZOn"
+const (
+	zonName = "ZOn"
+	zonLine = "$" + zonName + string(Delimiter)
+)
 
 type ZOn struct {
 	NoArgs

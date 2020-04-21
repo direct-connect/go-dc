@@ -42,7 +42,7 @@ func (m *Supports) Intersect(m2 *Supports) Supports {
 	return r
 }
 
-func (m *Supports) MarshalNMDC(_ *TextEncoder, buf *bytes.Buffer) error {
+func (m *Supports) MarshalNMDC(_ *Encoding, buf *bytes.Buffer) error {
 	n := len(m.Ext) - 1
 	for _, ext := range m.Ext {
 		n += len(ext)
@@ -57,7 +57,7 @@ func (m *Supports) MarshalNMDC(_ *TextEncoder, buf *bytes.Buffer) error {
 	return nil
 }
 
-func (m *Supports) UnmarshalNMDC(_ *TextDecoder, data []byte) error {
+func (m *Supports) UnmarshalNMDC(_ *Encoding, data []byte) error {
 	data = bytes.Trim(data, " ")
 	sub := bytes.Split(data, []byte(" "))
 	m.Ext = make([]string, 0, len(sub))

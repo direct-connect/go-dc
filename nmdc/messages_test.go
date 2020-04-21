@@ -22,76 +22,120 @@ func getTHPointer(s string) *tiger.Hash {
 }
 
 func doMessageTestUnmarshal(t *testing.T, cases []casesMessageEntry) {
-	for _, c := range cases {
-		name := c.typ
-		if c.name != "" {
-			name += " " + c.name
+	for _, raw := range []bool{false, true} {
+		ec := DefaultEncoding()
+		name := "utf8"
+		if raw {
+			name = "raw"
+			ec = ec.Clone()
+			ec.Raw = true
 		}
 		t.Run(name, func(t *testing.T) {
-			m := NewMessage(c.typ)
-			err := m.UnmarshalNMDC(nil, []byte(c.data))
-			require.NoError(t, err)
-			require.Equal(t, c.msg, m)
+			for _, c := range cases {
+				name := c.typ
+				if c.name != "" {
+					name += " " + c.name
+				}
+				t.Run(name, func(t *testing.T) {
+					m := NewMessage(c.typ)
+					err := m.UnmarshalNMDC(ec, []byte(c.data))
+					require.NoError(t, err)
+					require.Equal(t, c.msg, m)
+				})
+			}
 		})
 	}
 }
 
 func doMessageTestMarshal(t *testing.T, cases []casesMessageEntry) {
-	for _, c := range cases {
-		name := c.typ
-		if c.name != "" {
-			name += " " + c.name
+	for _, raw := range []bool{false, true} {
+		ec := DefaultEncoding()
+		name := "utf8"
+		if raw {
+			name = "raw"
+			ec = ec.Clone()
+			ec.Raw = true
 		}
 		t.Run(name, func(t *testing.T) {
-			buf := bytes.NewBuffer(nil)
-			err := c.msg.MarshalNMDC(nil, buf)
-			exp := c.expData
-			if exp == "" {
-				exp = c.data
+			for _, c := range cases {
+				name := c.typ
+				if c.name != "" {
+					name += " " + c.name
+				}
+				t.Run(name, func(t *testing.T) {
+					buf := bytes.NewBuffer(nil)
+					err := c.msg.MarshalNMDC(ec, buf)
+					exp := c.expData
+					if exp == "" {
+						exp = c.data
+					}
+					require.NoError(t, err)
+					require.Equal(t, exp, buf.String())
+				})
 			}
-			require.NoError(t, err)
-			require.Equal(t, exp, buf.String())
 		})
 	}
 }
 
 func doMessageBenchmarkUnmarshal(b *testing.B, cases []casesMessageEntry) {
-	for _, c := range cases {
-		name := c.typ
-		if c.name != "" {
-			name += " " + c.name
+	for _, raw := range []bool{false, true} {
+		ec := DefaultEncoding()
+		name := "utf8"
+		if raw {
+			name = "raw"
+			ec = ec.Clone()
+			ec.Raw = true
 		}
 		b.Run(name, func(b *testing.B) {
-			data := []byte(c.data)
-			for i := 0; i < b.N; i++ {
-				m := NewMessage(c.typ)
-				err := m.UnmarshalNMDC(nil, data)
-				if err != nil {
-					b.Fatal(err)
+			for _, c := range cases {
+				name := c.typ
+				if c.name != "" {
+					name += " " + c.name
 				}
+				b.Run(name, func(b *testing.B) {
+					data := []byte(c.data)
+					for i := 0; i < b.N; i++ {
+						m := NewMessage(c.typ)
+						err := m.UnmarshalNMDC(ec, data)
+						if err != nil {
+							b.Fatal(err)
+						}
+					}
+				})
 			}
 		})
 	}
 }
 
 func doMessageBenchmarkMarshal(b *testing.B, cases []casesMessageEntry) {
-	for _, c := range cases {
-		name := c.typ
-		if c.name != "" {
-			name += " " + c.name
+	for _, raw := range []bool{false, true} {
+		ec := DefaultEncoding()
+		name := "utf8"
+		if raw {
+			name = "raw"
+			ec = ec.Clone()
+			ec.Raw = true
 		}
 		b.Run(name, func(b *testing.B) {
-			m := NewMessage(c.typ)
-			err := m.UnmarshalNMDC(nil, []byte(c.data))
-			buf := bytes.NewBuffer(nil)
-			b.ResetTimer()
-			b.ReportAllocs()
-			for i := 0; i < b.N; i++ {
-				buf.Reset()
-				err = m.MarshalNMDC(nil, buf)
-				if err != nil {
-					b.Fatal(err)
+			for _, c := range cases {
+				name := c.typ
+				if c.name != "" {
+					name += " " + c.name
 				}
+				b.Run(name, func(b *testing.B) {
+					m := NewMessage(c.typ)
+					err := m.UnmarshalNMDC(ec, []byte(c.data))
+					buf := bytes.NewBuffer(nil)
+					b.ResetTimer()
+					b.ReportAllocs()
+					for i := 0; i < b.N; i++ {
+						buf.Reset()
+						err = m.MarshalNMDC(ec, buf)
+						if err != nil {
+							b.Fatal(err)
+						}
+					}
+				})
 			}
 		})
 	}

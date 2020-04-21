@@ -52,12 +52,12 @@ func (*Search) Type() string {
 	return "Search"
 }
 
-func (m *Search) MarshalNMDC(enc *TextEncoder, buf *bytes.Buffer) error {
+func (m *Search) MarshalNMDC(ec *Encoding, buf *bytes.Buffer) error {
 	if m.Address != "" {
 		buf.WriteString(m.Address)
 	} else {
 		buf.WriteString("Hub:")
-		if err := Name(m.User).MarshalNMDC(enc, buf); err != nil {
+		if err := Name(m.User).MarshalNMDC(ec, buf); err != nil {
 			return err
 		}
 	}
@@ -96,7 +96,7 @@ func (m *Search) MarshalNMDC(enc *TextEncoder, buf *bytes.Buffer) error {
 		buf.Write(b[:])
 	} else {
 		buf2 := bytes.NewBuffer(nil)
-		if err := String(m.Pattern).MarshalNMDC(enc, buf2); err != nil {
+		if err := String(m.Pattern).MarshalNMDC(ec, buf2); err != nil {
 			return err
 		}
 		pattern := bytes.Replace(buf2.Bytes(), []byte(" "), []byte("$"), -1)
@@ -105,7 +105,7 @@ func (m *Search) MarshalNMDC(enc *TextEncoder, buf *bytes.Buffer) error {
 	return nil
 }
 
-func (m *Search) UnmarshalNMDC(dec *TextDecoder, data []byte) error {
+func (m *Search) UnmarshalNMDC(ec *Encoding, data []byte) error {
 	i := bytes.IndexByte(data, ' ')
 	if i < 0 {
 		return errors.New("invalid search command")
@@ -115,7 +115,7 @@ func (m *Search) UnmarshalNMDC(dec *TextDecoder, data []byte) error {
 	const namePref = "Hub:"
 	if val := field0; bytes.HasPrefix(val, []byte(namePref)) {
 		var name Name
-		err := name.UnmarshalNMDC(dec, val[len(namePref):])
+		err := name.UnmarshalNMDC(ec, val[len(namePref):])
 		if err != nil {
 			return err
 		}
@@ -123,10 +123,10 @@ func (m *Search) UnmarshalNMDC(dec *TextDecoder, data []byte) error {
 	} else {
 		m.Address = string(field0)
 	}
-	return m.unmarshalString(dec, field1)
+	return m.unmarshalString(ec, field1)
 }
 
-func (m *Search) unmarshalString(dec *TextDecoder, data []byte) error {
+func (m *Search) unmarshalString(ec *Encoding, data []byte) error {
 	fields := bytes.SplitN(data, []byte{'?'}, 5)
 	if len(fields) < 5 {
 		return errors.New("invalid search string")
@@ -193,7 +193,7 @@ func (m *Search) unmarshalString(dec *TextDecoder, data []byte) error {
 		}
 	} else {
 		var str String
-		err := str.UnmarshalNMDC(dec, field)
+		err := str.UnmarshalNMDC(ec, field)
 		if err != nil {
 			return err
 		}
@@ -234,8 +234,8 @@ func (*SR) Type() string {
 	return "SR"
 }
 
-func (m *SR) MarshalNMDC(enc *TextEncoder, buf *bytes.Buffer) error {
-	if err := Name(m.From).MarshalNMDC(enc, buf); err != nil {
+func (m *SR) MarshalNMDC(ec *Encoding, buf *bytes.Buffer) error {
+	if err := Name(m.From).MarshalNMDC(ec, buf); err != nil {
 		return err
 	}
 	if len(m.Path) == 0 {
@@ -246,7 +246,7 @@ func (m *SR) MarshalNMDC(enc *TextEncoder, buf *bytes.Buffer) error {
 		if i != 0 {
 			buf.WriteByte('\\')
 		}
-		if err := String(p).MarshalNMDC(enc, buf); err != nil {
+		if err := String(p).MarshalNMDC(ec, buf); err != nil {
 			return err
 		}
 	}
@@ -271,7 +271,7 @@ func (m *SR) MarshalNMDC(enc *TextEncoder, buf *bytes.Buffer) error {
 		buf.Write(b[:])
 	} else {
 		// legacy
-		if err := String(m.HubName).MarshalNMDC(enc, buf); err != nil {
+		if err := String(m.HubName).MarshalNMDC(ec, buf); err != nil {
 			return err
 		}
 	}
@@ -282,19 +282,19 @@ func (m *SR) MarshalNMDC(enc *TextEncoder, buf *bytes.Buffer) error {
 		return nil
 	}
 	buf.WriteByte(srSep)
-	if err := Name(m.To).MarshalNMDC(enc, buf); err != nil {
+	if err := Name(m.To).MarshalNMDC(ec, buf); err != nil {
 		return err
 	}
 	return nil
 }
 
-func (m *SR) UnmarshalNMDC(dec *TextDecoder, data []byte) error {
+func (m *SR) UnmarshalNMDC(ec *Encoding, data []byte) error {
 	i := bytes.IndexByte(data, ' ')
 	if i < 0 {
 		return errors.New("invalid SR command: missing name")
 	}
 	var name Name
-	err := name.UnmarshalNMDC(dec, data[:i])
+	err := name.UnmarshalNMDC(ec, data[:i])
 	if err != nil {
 		return err
 	}
@@ -356,7 +356,7 @@ func (m *SR) UnmarshalNMDC(dec *TextDecoder, data []byte) error {
 		slots = sizeAndSlots[i+1:]
 	}
 	var spath String
-	if err := spath.UnmarshalNMDC(dec, path); err != nil {
+	if err := spath.UnmarshalNMDC(ec, path); err != nil {
 		return err
 	}
 	m.Path = strings.Split(string(path), "\\")
@@ -395,7 +395,7 @@ func (m *SR) UnmarshalNMDC(dec *TextDecoder, data []byte) error {
 		res := data[:i]
 		data = data[i+2:]
 		var s String
-		err = s.UnmarshalNMDC(dec, res)
+		err = s.UnmarshalNMDC(ec, res)
 		if err != nil {
 			return err
 		}
@@ -414,7 +414,7 @@ func (m *SR) UnmarshalNMDC(dec *TextDecoder, data []byte) error {
 		return errors.New("invalid SR command: missing target")
 	}
 	data = data[1:]
-	if err := name.UnmarshalNMDC(dec, data); err != nil {
+	if err := name.UnmarshalNMDC(ec, data); err != nil {
 		return err
 	}
 	m.To = string(name)
@@ -431,7 +431,7 @@ func (*TTHSearchActive) Type() string {
 	return "SA"
 }
 
-func (m *TTHSearchActive) MarshalNMDC(enc *TextEncoder, buf *bytes.Buffer) error {
+func (m *TTHSearchActive) MarshalNMDC(_ *Encoding, buf *bytes.Buffer) error {
 	var b [tiger.Base32Size + 1]byte
 	if err := m.TTH.MarshalBase32(b[:]); err != nil {
 		return err
@@ -442,7 +442,7 @@ func (m *TTHSearchActive) MarshalNMDC(enc *TextEncoder, buf *bytes.Buffer) error
 	return nil
 }
 
-func (m *TTHSearchActive) UnmarshalNMDC(_ *TextDecoder, data []byte) error {
+func (m *TTHSearchActive) UnmarshalNMDC(_ *Encoding, data []byte) error {
 	const i = tiger.Base32Size
 	if i >= len(data) || data[i] != ' ' {
 		return errors.New("missing separator in SA command")
@@ -464,20 +464,20 @@ func (*TTHSearchPassive) Type() string {
 	return "SP"
 }
 
-func (m *TTHSearchPassive) MarshalNMDC(enc *TextEncoder, buf *bytes.Buffer) error {
+func (m *TTHSearchPassive) MarshalNMDC(ec *Encoding, buf *bytes.Buffer) error {
 	var b [tiger.Base32Size + 1]byte
 	if err := m.TTH.MarshalBase32(b[:]); err != nil {
 		return err
 	}
 	b[len(b)-1] = ' '
 	buf.Write(b[:])
-	if err := Name(m.User).MarshalNMDC(enc, buf); err != nil {
+	if err := Name(m.User).MarshalNMDC(ec, buf); err != nil {
 		return err
 	}
 	return nil
 }
 
-func (m *TTHSearchPassive) UnmarshalNMDC(dec *TextDecoder, data []byte) error {
+func (m *TTHSearchPassive) UnmarshalNMDC(ec *Encoding, data []byte) error {
 	const i = tiger.Base32Size
 	if i >= len(data) || data[i] != ' ' {
 		return errors.New("missing separator in SP command")
@@ -486,7 +486,7 @@ func (m *TTHSearchPassive) UnmarshalNMDC(dec *TextDecoder, data []byte) error {
 		return err
 	}
 	var name Name
-	if err := name.UnmarshalNMDC(dec, data[i+1:]); err != nil {
+	if err := name.UnmarshalNMDC(ec, data[i+1:]); err != nil {
 		return err
 	}
 	m.User = string(name)

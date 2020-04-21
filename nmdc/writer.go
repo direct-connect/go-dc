@@ -2,9 +2,7 @@ package nmdc
 
 import (
 	"bytes"
-	"compress/zlib"
 	"io"
-	"sync/atomic"
 
 	"github.com/direct-connect/go-dc/lineproto"
 )
@@ -16,22 +14,32 @@ func NewWriter(w io.Writer) *Writer {
 
 // NewWriterSize creates a new NMDC protocol writer with a specified buffer size.
 func NewWriterSize(w io.Writer, buf int) *Writer {
+	return NewWriterOn(lineproto.NewWriterSize(w, buf))
+}
+
+// NewWriter creates a new NMDC protocol writer with a default buffer size.
+func NewWriterOn(w lineproto.LineWriter) *Writer {
 	return &Writer{
-		Writer: lineproto.NewWriterSize(w, buf),
+		w: w,
 	}
 }
 
 // Writer is protocol message writer for NMDC protocol. It's not safe for a concurrent use.
 type Writer struct {
-	*lineproto.Writer
+	w lineproto.LineWriter
 
-	enc atomic.Value // *TextEncoder
+	ec *Encoding
 
 	// onMessage is called each time a NMDC protocol message is written.
 	// The function may return (false, nil) to skip writing the message.
 	onMessage []func(m Message) (bool, error)
 
 	mbuf bytes.Buffer
+}
+
+func (w *Writer) Reset(lw lineproto.LineWriter) {
+	w.mbuf.Reset()
+	w.w = lw
 }
 
 // OnMessage registers a hook that is called each time a NMDC protocol message is written.
@@ -42,29 +50,25 @@ func (w *Writer) OnMessage(fnc func(m Message) (bool, error)) {
 	w.onMessage = append(w.onMessage, fnc)
 }
 
-// Encoder returns current text encoder.
-func (w *Writer) Encoder() *TextEncoder {
-	enc, _ := w.enc.Load().(*TextEncoder)
-	return enc
+// Encoding returns current protocol encoding.
+func (w *Writer) Encoding() *Encoding {
+	return w.ec
 }
 
-// SetEncoder sets a text encoding used to write messages.
-func (w *Writer) SetEncoder(enc *TextEncoder) {
-	w.enc.Store(enc)
+// SetEncoding sets current protocol encoding.
+func (w *Writer) SetEncoding(ec *Encoding) {
+	w.ec = ec
 }
 
 // WriteKeepAlive writes an empty (keep alive) message.
 // It is caller's responsibility to flush the writer.
 func (w *Writer) WriteKeepAlive() error {
-	return w.WriteLine([]byte{Delimiter})
+	return w.w.WriteLine([]byte{Delimiter})
 }
 
 // WriteMsg encodes and writes a NMDC protocol message.
 func (w *Writer) WriteMsg(msg ...Message) error {
-	if err := w.Writer.Err(); err != nil {
-		return err
-	}
-	enc := w.Encoder()
+	enc := w.ec
 	for _, m := range msg {
 		for _, fnc := range w.onMessage {
 			if ok, err := fnc(m); err != nil || !ok {
@@ -72,27 +76,13 @@ func (w *Writer) WriteMsg(msg ...Message) error {
 			}
 		}
 		w.mbuf.Reset()
-		err := MarshalTo(enc, &w.mbuf, m)
+		err := enc.MarshalTo(&w.mbuf, m)
 		if err != nil {
 			return err
 		}
-		if err := w.WriteLine(w.mbuf.Bytes()); err != nil {
+		if err := w.w.WriteLine(w.mbuf.Bytes()); err != nil {
 			return err
 		}
 	}
 	return nil
-}
-
-// ZOn enables compression on this writer.
-func (w *Writer) ZOn() error {
-	return w.ZOnLevel(zlib.DefaultCompression)
-}
-
-// ZOnLevel enables compression with a given level on this writer.
-func (w *Writer) ZOnLevel(lvl int) error {
-	if err := w.WriteLine([]byte("$" + zonName + "|")); err != nil {
-		return err
-	}
-	// flushes
-	return w.EnableZlibLevel(lvl)
 }

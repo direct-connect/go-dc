@@ -35,7 +35,7 @@ func (*Lock) Type() string {
 	return "Lock"
 }
 
-func (m *Lock) MarshalNMDC(_ *TextEncoder, buf *bytes.Buffer) error {
+func (m *Lock) MarshalNMDC(_ *Encoding, buf *bytes.Buffer) error {
 	if !m.NoExt {
 		buf.WriteString(extLockPref)
 	}
@@ -54,7 +54,7 @@ func (m *Lock) MarshalNMDC(_ *TextEncoder, buf *bytes.Buffer) error {
 	return nil
 }
 
-func (m *Lock) UnmarshalNMDC(_ *TextDecoder, data []byte) error {
+func (m *Lock) UnmarshalNMDC(_ *Encoding, data []byte) error {
 	*m = Lock{NoExt: true}
 	if bytes.HasPrefix(data, []byte(extLockPref)) {
 		m.NoExt = false
@@ -141,12 +141,12 @@ func (*Key) Type() string {
 	return "Key"
 }
 
-func (m *Key) MarshalNMDC(_ *TextEncoder, buf *bytes.Buffer) error {
+func (m *Key) MarshalNMDC(_ *Encoding, buf *bytes.Buffer) error {
 	buf.WriteString(m.Key)
 	return nil
 }
 
-func (m *Key) UnmarshalNMDC(_ *TextDecoder, data []byte) error {
+func (m *Key) UnmarshalNMDC(_ *Encoding, data []byte) error {
 	m.Key = string(data)
 	return nil
 }

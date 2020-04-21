@@ -47,13 +47,13 @@ func (*BotList) Type() string {
 // See OpList and BotList.
 type Names []string
 
-func (m Names) MarshalNMDC(enc *TextEncoder, buf *bytes.Buffer) error {
+func (m Names) MarshalNMDC(ec *Encoding, buf *bytes.Buffer) error {
 	if len(m) == 0 {
 		buf.WriteString("$$")
 		return nil
 	}
 	for _, name := range m {
-		if err := Name(name).MarshalNMDC(enc, buf); err != nil {
+		if err := Name(name).MarshalNMDC(ec, buf); err != nil {
 			return err
 		}
 		buf.WriteString("$$")
@@ -61,7 +61,7 @@ func (m Names) MarshalNMDC(enc *TextEncoder, buf *bytes.Buffer) error {
 	return nil
 }
 
-func (m *Names) UnmarshalNMDC(dec *TextDecoder, data []byte) error {
+func (m *Names) UnmarshalNMDC(ec *Encoding, data []byte) error {
 	data = bytes.TrimSuffix(data, []byte("$$"))
 
 	if len(data) == 0 {
@@ -73,7 +73,7 @@ func (m *Names) UnmarshalNMDC(dec *TextDecoder, data []byte) error {
 	list := make([]string, 0, len(sub))
 	for _, b := range sub {
 		var name Name
-		if err := name.UnmarshalNMDC(dec, b); err != nil {
+		if err := name.UnmarshalNMDC(ec, b); err != nil {
 			return err
 		}
 		list = append(list, string(name))
@@ -95,9 +95,9 @@ func (*UserIP) Type() string {
 	return "UserIP"
 }
 
-func (m *UserIP) MarshalNMDC(enc *TextEncoder, buf *bytes.Buffer) error {
+func (m *UserIP) MarshalNMDC(ec *Encoding, buf *bytes.Buffer) error {
 	for _, a := range m.List {
-		if err := Name(a.Name).MarshalNMDC(enc, buf); err != nil {
+		if err := Name(a.Name).MarshalNMDC(ec, buf); err != nil {
 			return err
 		}
 		buf.WriteByte(' ')
@@ -107,7 +107,7 @@ func (m *UserIP) MarshalNMDC(enc *TextEncoder, buf *bytes.Buffer) error {
 	return nil
 }
 
-func (m *UserIP) UnmarshalNMDC(dec *TextDecoder, data []byte) error {
+func (m *UserIP) UnmarshalNMDC(ec *Encoding, data []byte) error {
 	data = bytes.TrimSuffix(data, []byte("\r"))
 	data = bytes.TrimSuffix(data, []byte("$$"))
 	sub := bytes.Split(data, []byte("$$"))
@@ -120,7 +120,7 @@ func (m *UserIP) UnmarshalNMDC(dec *TextDecoder, data []byte) error {
 			s = s[:i]
 		}
 		var name Name
-		if err := name.UnmarshalNMDC(dec, s); err != nil {
+		if err := name.UnmarshalNMDC(ec, s); err != nil {
 			return err
 		}
 		a.Name = string(name)

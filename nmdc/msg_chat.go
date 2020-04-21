@@ -38,10 +38,10 @@ func (m *ChatMessage) Type() string {
 	return "" // special case
 }
 
-func (m *ChatMessage) MarshalNMDC(enc *TextEncoder, buf *bytes.Buffer) error {
+func (m *ChatMessage) MarshalNMDC(ec *Encoding, buf *bytes.Buffer) error {
 	if m.Name != "" {
 		buf.WriteByte('<')
-		err := Name(m.Name).MarshalNMDC(enc, buf)
+		err := Name(m.Name).MarshalNMDC(ec, buf)
 		if err != nil {
 			return err
 		}
@@ -54,14 +54,14 @@ func (m *ChatMessage) MarshalNMDC(enc *TextEncoder, buf *bytes.Buffer) error {
 	if m.Me && strings.HasPrefix(text, "/me ") {
 		text = text[4:]
 	}
-	err := String(text).MarshalNMDC(enc, buf)
+	err := String(text).MarshalNMDC(ec, buf)
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func (m *ChatMessage) UnmarshalNMDC(dec *TextDecoder, data []byte) error {
+func (m *ChatMessage) UnmarshalNMDC(ec *Encoding, data []byte) error {
 	// <user> message text|
 	// or
 	// message text|
@@ -110,13 +110,13 @@ func (m *ChatMessage) UnmarshalNMDC(dec *TextDecoder, data []byte) error {
 			}
 		}
 		var sname Name
-		if err := sname.UnmarshalNMDC(dec, name); err != nil {
+		if err := sname.UnmarshalNMDC(ec, name); err != nil {
 			return err
 		}
 		m.Name = string(sname)
 	}
 	var text String
-	if err := text.UnmarshalNMDC(dec, data); err != nil {
+	if err := text.UnmarshalNMDC(ec, data); err != nil {
 		return err
 	}
 	m.Text = string(text)
@@ -138,13 +138,13 @@ func (m *PrivateMessage) Type() string {
 	return "To:"
 }
 
-func (m *PrivateMessage) MarshalNMDC(enc *TextEncoder, buf *bytes.Buffer) error {
-	if err := Name(m.To).MarshalNMDC(enc, buf); err != nil {
+func (m *PrivateMessage) MarshalNMDC(ec *Encoding, buf *bytes.Buffer) error {
+	if err := Name(m.To).MarshalNMDC(ec, buf); err != nil {
 		return err
 	}
 
 	buf.WriteString(" From: ")
-	if err := Name(m.From).MarshalNMDC(enc, buf); err != nil {
+	if err := Name(m.From).MarshalNMDC(ec, buf); err != nil {
 		return err
 	}
 
@@ -153,7 +153,7 @@ func (m *PrivateMessage) MarshalNMDC(enc *TextEncoder, buf *bytes.Buffer) error 
 		name = m.From
 	}
 	buf.WriteString(" $<")
-	if err := Name(name).MarshalNMDC(enc, buf); err != nil {
+	if err := Name(name).MarshalNMDC(ec, buf); err != nil {
 		return err
 	}
 	buf.WriteString("> ")
@@ -165,20 +165,20 @@ func (m *PrivateMessage) MarshalNMDC(enc *TextEncoder, buf *bytes.Buffer) error 
 	if m.Me && strings.HasPrefix(text, "/me ") {
 		text = text[4:]
 	}
-	if err := String(text).MarshalNMDC(enc, buf); err != nil {
+	if err := String(text).MarshalNMDC(ec, buf); err != nil {
 		return err
 	}
 	return nil
 }
 
-func (m *PrivateMessage) UnmarshalNMDC(dec *TextDecoder, data []byte) error {
+func (m *PrivateMessage) UnmarshalNMDC(ec *Encoding, data []byte) error {
 	var name Name
 
 	const fromToken = " From: "
 	i := bytes.Index(data, []byte(fromToken))
 	if i < 0 {
 		return errors.New("invalid To message: no 'from' delimiter")
-	} else if err := name.UnmarshalNMDC(dec, data[:i]); err != nil {
+	} else if err := name.UnmarshalNMDC(ec, data[:i]); err != nil {
 		return err
 	}
 	data = data[i+len(fromToken):]
@@ -188,7 +188,7 @@ func (m *PrivateMessage) UnmarshalNMDC(dec *TextDecoder, data []byte) error {
 	i = bytes.Index(data, []byte(nameTokenS))
 	if i < 0 {
 		return errors.New("invalid To message: no name delimiter")
-	} else if err := name.UnmarshalNMDC(dec, data[:i]); err != nil {
+	} else if err := name.UnmarshalNMDC(ec, data[:i]); err != nil {
 		return err
 	}
 	data = data[i+len(nameTokenS):]
@@ -197,14 +197,14 @@ func (m *PrivateMessage) UnmarshalNMDC(dec *TextDecoder, data []byte) error {
 	i = bytes.Index(data, []byte("> "))
 	if i < 0 {
 		return errors.New("invalid To message: no name end delimiter")
-	} else if err := name.UnmarshalNMDC(dec, data[:i]); err != nil {
+	} else if err := name.UnmarshalNMDC(ec, data[:i]); err != nil {
 		return err
 	}
 	text := data[i+2:]
 	m.Name = string(name)
 
 	var s String
-	if err := s.UnmarshalNMDC(dec, text); err != nil {
+	if err := s.UnmarshalNMDC(ec, text); err != nil {
 		return err
 	}
 	m.Text = string(s)
@@ -225,13 +225,13 @@ func (*MCTo) Type() string {
 	return "MCTo"
 }
 
-func (m *MCTo) MarshalNMDC(enc *TextEncoder, buf *bytes.Buffer) error {
-	if err := Name(m.To).MarshalNMDC(enc, buf); err != nil {
+func (m *MCTo) MarshalNMDC(ec *Encoding, buf *bytes.Buffer) error {
+	if err := Name(m.To).MarshalNMDC(ec, buf); err != nil {
 		return err
 	}
 
 	buf.WriteString(" $")
-	if err := Name(m.From).MarshalNMDC(enc, buf); err != nil {
+	if err := Name(m.From).MarshalNMDC(ec, buf); err != nil {
 		return err
 	}
 
@@ -243,19 +243,19 @@ func (m *MCTo) MarshalNMDC(enc *TextEncoder, buf *bytes.Buffer) error {
 	if m.Me && strings.HasPrefix(text, "/me ") {
 		text = text[4:]
 	}
-	if err := String(text).MarshalNMDC(enc, buf); err != nil {
+	if err := String(text).MarshalNMDC(ec, buf); err != nil {
 		return err
 	}
 	return nil
 }
 
-func (m *MCTo) UnmarshalNMDC(dec *TextDecoder, data []byte) error {
+func (m *MCTo) UnmarshalNMDC(ec *Encoding, data []byte) error {
 	var name Name
 
 	i := bytes.Index(data, []byte(" $"))
 	if i < 0 {
 		return errors.New("invalid MCTo: no name delimiter")
-	} else if err := name.UnmarshalNMDC(dec, data[:i]); err != nil {
+	} else if err := name.UnmarshalNMDC(ec, data[:i]); err != nil {
 		return err
 	}
 	data = data[i+2:]
@@ -264,13 +264,13 @@ func (m *MCTo) UnmarshalNMDC(dec *TextDecoder, data []byte) error {
 	i = bytes.IndexByte(data, ' ')
 	if i < 0 {
 		return errors.New("invalid MCTo: no message delimiter")
-	} else if err := name.UnmarshalNMDC(dec, data[:i]); err != nil {
+	} else if err := name.UnmarshalNMDC(ec, data[:i]); err != nil {
 		return err
 	}
 	m.From = string(name)
 
 	var s String
-	if err := s.UnmarshalNMDC(dec, data[i+1:]); err != nil {
+	if err := s.UnmarshalNMDC(ec, data[i+1:]); err != nil {
 		return err
 	}
 	m.Text = string(s)
@@ -310,7 +310,7 @@ func (*UserCommand) Type() string {
 	return "UserCommand"
 }
 
-func (m *UserCommand) MarshalNMDC(enc *TextEncoder, buf *bytes.Buffer) error {
+func (m *UserCommand) MarshalNMDC(ec *Encoding, buf *bytes.Buffer) error {
 	var b [10]byte
 	bi := strconv.AppendUint(b[:0], uint64(m.Typ), 10)
 	bi = append(bi, ' ')
@@ -322,7 +322,7 @@ func (m *UserCommand) MarshalNMDC(enc *TextEncoder, buf *bytes.Buffer) error {
 			if i != 0 {
 				buf.WriteString("\\")
 			}
-			if err := String(s).MarshalNMDC(enc, buf); err != nil {
+			if err := String(s).MarshalNMDC(ec, buf); err != nil {
 				return err
 			}
 		}
@@ -333,13 +333,13 @@ func (m *UserCommand) MarshalNMDC(enc *TextEncoder, buf *bytes.Buffer) error {
 		return nil
 	}
 	buf.WriteString(" $")
-	if err := String(m.Command).MarshalNMDC(enc, buf); err != nil {
+	if err := String(m.Command).MarshalNMDC(ec, buf); err != nil {
 		return err
 	}
 	return nil
 }
 
-func (m *UserCommand) UnmarshalNMDC(dec *TextDecoder, data []byte) error {
+func (m *UserCommand) UnmarshalNMDC(ec *Encoding, data []byte) error {
 	arr := bytes.SplitN(bytes.TrimSpace(data), []byte(" "), 3)
 	if len(arr) < 2 {
 		return errors.New("invalid user command")
@@ -378,7 +378,7 @@ func (m *UserCommand) UnmarshalNMDC(dec *TextDecoder, data []byte) error {
 			continue
 		}
 		var s String
-		err := s.UnmarshalNMDC(dec, p)
+		err := s.UnmarshalNMDC(ec, p)
 		if err != nil {
 			return errors.New("invalid path user command")
 		}
@@ -386,7 +386,7 @@ func (m *UserCommand) UnmarshalNMDC(dec *TextDecoder, data []byte) error {
 	}
 
 	var s String
-	if err := s.UnmarshalNMDC(dec, val[i+1:]); err != nil {
+	if err := s.UnmarshalNMDC(ec, val[i+1:]); err != nil {
 		return err
 	}
 	m.Command = string(s)

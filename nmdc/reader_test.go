@@ -3,6 +3,7 @@ package nmdc
 import (
 	"bytes"
 	"errors"
+	"github.com/direct-connect/go-dc/lineproto"
 	"io"
 	"math/rand"
 	"strconv"
@@ -203,7 +204,7 @@ func BenchmarkReader(b *testing.B) {
 			io.Reader
 		}{bytes.NewReader(data)}
 
-		lr := NewReader(r)
+		lr := lineproto.NewReader(r, Delimiter)
 
 		n := 0
 		for {

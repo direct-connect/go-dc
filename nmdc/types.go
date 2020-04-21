@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"html"
 	"strings"
-	"unicode/utf8"
 
 	"github.com/direct-connect/go-dc/tiger"
 )
@@ -67,11 +66,11 @@ type TTH = tiger.Hash
 // NoArgs is an embeddable type for protocol commands with no arguments.
 type NoArgs struct{}
 
-func (*NoArgs) MarshalNMDC(_ *TextEncoder, _ *bytes.Buffer) error {
+func (*NoArgs) MarshalNMDC(_ *Encoding, _ *bytes.Buffer) error {
 	return nil
 }
 
-func (*NoArgs) UnmarshalNMDC(_ *TextDecoder, data []byte) error {
+func (*NoArgs) UnmarshalNMDC(_ *Encoding, data []byte) error {
 	if len(data) != 0 {
 		return errors.New("unexpected argument for the command")
 	}
@@ -82,12 +81,12 @@ func (*NoArgs) UnmarshalNMDC(_ *TextDecoder, data []byte) error {
 // It has more restrictions than a String type.
 type Name string
 
-func (s Name) MarshalNMDC(enc *TextEncoder, buf *bytes.Buffer) error {
+func (s Name) MarshalNMDC(ec *Encoding, buf *bytes.Buffer) error {
 	if len(s) > maxName {
 		return errors.New("name is too long")
 	}
 	str := string(s)
-	if enc != nil {
+	if enc := ec.TextEncoder(); enc != nil {
 		var err error
 		str, err = enc.String(str)
 		if err != nil {
@@ -97,22 +96,20 @@ func (s Name) MarshalNMDC(enc *TextEncoder, buf *bytes.Buffer) error {
 	return escapeName(buf, str)
 }
 
-func (s *Name) UnmarshalNMDC(dec *TextDecoder, data []byte) error {
-	if len(data) > maxName {
+func (s *Name) UnmarshalNMDC(ec *Encoding, data []byte) error {
+	if ec.MaxUserName > 0 && len(data) > ec.MaxUserName {
 		return errors.New("name is too long")
-	} else if bytes.ContainsAny(data, invalidCharsName) {
+	}
+	if ec.Raw {
+		*s = Name(data)
+		return nil
+	}
+	if bytes.ContainsAny(data, invalidCharsName) {
 		return fmt.Errorf("invalid characters in name: %q", string(data))
 	}
-	data = UnescapeBytes(data)
-	if dec != nil {
-		var err error
-		data, err = dec.Bytes(data)
-		if err != nil {
-			return err
-		}
-	}
-	if !utf8.Valid(data) {
-		return &errUnknownEncoding{text: data}
+	data, err := ec.DecodeStringBytes(data)
+	if err != nil {
+		return err
 	}
 	*s = Name(data)
 	return nil
@@ -121,9 +118,9 @@ func (s *Name) UnmarshalNMDC(dec *TextDecoder, data []byte) error {
 // String is a value type encoded and decoded as a NMDC string value.
 type String string
 
-func (s String) MarshalNMDC(enc *TextEncoder, buf *bytes.Buffer) error {
+func (s String) MarshalNMDC(ec *Encoding, buf *bytes.Buffer) error {
 	str := string(s)
-	if enc != nil {
+	if enc := ec.TextEncoder(); enc != nil {
 		var err error
 		str, err = enc.String(str)
 		if err != nil {
@@ -133,20 +130,13 @@ func (s String) MarshalNMDC(enc *TextEncoder, buf *bytes.Buffer) error {
 	return escapeString(buf, str)
 }
 
-func (s *String) UnmarshalNMDC(dec *TextDecoder, data []byte) error {
-	if bytes.IndexByte(data, 0x00) >= 0 {
+func (s *String) UnmarshalNMDC(ec *Encoding, data []byte) error {
+	if !ec.Raw && bytes.IndexByte(data, 0x00) >= 0 {
 		return errors.New("invalid characters in text")
 	}
-	data = UnescapeBytes(data)
-	if dec != nil {
-		var err error
-		data, err = dec.Bytes(data)
-		if err != nil {
-			return err
-		}
-	}
-	if !utf8.Valid(data) {
-		return &errUnknownEncoding{text: data}
+	data, err := ec.DecodeStringBytes(data)
+	if err != nil {
+		return err
 	}
 	*s = String(data)
 	return nil

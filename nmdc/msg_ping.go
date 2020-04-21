@@ -60,9 +60,9 @@ func (*HubINFO) Type() string {
 	return "HubINFO"
 }
 
-func (m *HubINFO) MarshalNMDC(enc *TextEncoder, buf *bytes.Buffer) error {
+func (m *HubINFO) MarshalNMDC(ec *Encoding, buf *bytes.Buffer) error {
 	const sep = '$'
-	if err := String(m.Name).MarshalNMDC(enc, buf); err != nil {
+	if err := String(m.Name).MarshalNMDC(ec, buf); err != nil {
 		return err
 	}
 
@@ -70,7 +70,7 @@ func (m *HubINFO) MarshalNMDC(enc *TextEncoder, buf *bytes.Buffer) error {
 	buf.WriteString(m.Host)
 
 	buf.WriteByte(sep)
-	if err := String(m.Desc).MarshalNMDC(enc, buf); err != nil {
+	if err := String(m.Desc).MarshalNMDC(ec, buf); err != nil {
 		return err
 	}
 
@@ -93,12 +93,12 @@ func (m *HubINFO) MarshalNMDC(enc *TextEncoder, buf *bytes.Buffer) error {
 	}
 
 	buf.WriteByte(sep)
-	if err := String(m.Owner).MarshalNMDC(enc, buf); err != nil {
+	if err := String(m.Owner).MarshalNMDC(ec, buf); err != nil {
 		return err
 	}
 
 	buf.WriteByte(sep)
-	if err := String(m.State).MarshalNMDC(enc, buf); err != nil {
+	if err := String(m.State).MarshalNMDC(ec, buf); err != nil {
 		return err
 	}
 
@@ -107,13 +107,13 @@ func (m *HubINFO) MarshalNMDC(enc *TextEncoder, buf *bytes.Buffer) error {
 	return nil
 }
 
-func (m *HubINFO) UnmarshalNMDC(dec *TextDecoder, data []byte) error {
+func (m *HubINFO) UnmarshalNMDC(ec *Encoding, data []byte) error {
 	fields := bytes.SplitN(data, []byte("$"), 13)
 	for i, field := range fields {
 		switch i {
 		case 0:
 			var s String
-			if err := s.UnmarshalNMDC(dec, field); err != nil {
+			if err := s.UnmarshalNMDC(ec, field); err != nil {
 				return err
 			}
 			m.Name = string(s)
@@ -121,7 +121,7 @@ func (m *HubINFO) UnmarshalNMDC(dec *TextDecoder, data []byte) error {
 			m.Host = string(field)
 		case 2:
 			var s String
-			if err := s.UnmarshalNMDC(dec, field); err != nil {
+			if err := s.UnmarshalNMDC(ec, field); err != nil {
 				return err
 			}
 			m.Desc = string(s)
@@ -158,13 +158,13 @@ func (m *HubINFO) UnmarshalNMDC(dec *TextDecoder, data []byte) error {
 			}
 		case 8:
 			var s String
-			if err := s.UnmarshalNMDC(dec, field); err != nil {
+			if err := s.UnmarshalNMDC(ec, field); err != nil {
 				return err
 			}
 			m.Owner = string(s)
 		case 9:
 			var s String
-			if err := s.UnmarshalNMDC(dec, field); err != nil {
+			if err := s.UnmarshalNMDC(ec, field); err != nil {
 				return err
 			}
 			m.State = string(s)

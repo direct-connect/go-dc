@@ -2,6 +2,7 @@ package nmdc
 
 import (
 	"bytes"
+	"errors"
 )
 
 func init() {
@@ -10,6 +11,28 @@ func init() {
 	RegisterMessage(&Close{})
 	RegisterMessage(&GetTopic{})
 	RegisterMessage(&SetTopic{})
+	// must not register KeepAlive
+}
+
+var _ Message = (*KeepAlive)(nil)
+
+type KeepAlive struct{}
+
+func (*KeepAlive) Type() string {
+	return "" // special case
+}
+
+func (m *KeepAlive) MarshalNMDC(_ *Encoding, buf *bytes.Buffer) error {
+	return nil
+}
+
+func (m *KeepAlive) UnmarshalNMDC(_ *Encoding, data []byte) error {
+	if len(data) != 0 {
+		return &ErrProtocolViolation{
+			Err: errors.New("nmdc: keep alive message should be empty"),
+		}
+	}
+	return nil
 }
 
 type ForceMove struct {
@@ -20,12 +43,12 @@ func (*ForceMove) Type() string {
 	return "ForceMove"
 }
 
-func (m *ForceMove) MarshalNMDC(enc *TextEncoder, buf *bytes.Buffer) error {
+func (m *ForceMove) MarshalNMDC(_ *Encoding, buf *bytes.Buffer) error {
 	buf.WriteString(m.Address)
 	return nil
 }
 
-func (m *ForceMove) UnmarshalNMDC(dec *TextDecoder, data []byte) error {
+func (m *ForceMove) UnmarshalNMDC(_ *Encoding, data []byte) error {
 	m.Address = string(data)
 	return nil
 }

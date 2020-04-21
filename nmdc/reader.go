@@ -2,17 +2,10 @@ package nmdc
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"io"
-	"sync/atomic"
 
 	"github.com/direct-connect/go-dc/lineproto"
-)
-
-const (
-	maxName    = 256
-	maxCmdName = 32
 )
 
 type ErrUnexpectedCommand struct {
@@ -42,22 +35,23 @@ func (e *errUnknownEncoding) Error() string {
 	return fmt.Sprintf("nmdc: unknown text encoding: %q", string(e.text))
 }
 
+// NewReader creates an NMDC protocol reader
 func NewReader(r io.Reader) *Reader {
+	return NewReaderOn(lineproto.NewReader(r, Delimiter))
+}
+
+func NewReaderOn(r lineproto.LineReader) *Reader {
 	return &Reader{
-		Reader:     lineproto.NewReader(r, Delimiter),
-		maxCmdName: maxCmdName,
+		r:  r,
+		ec: DefaultEncoding(),
 	}
 }
 
-// Reader is not safe for concurrent use.
+// Reader is safe for concurrent use.
 type Reader struct {
-	*lineproto.Reader
+	r lineproto.LineReader
 
-	// dec is the current decoder for the text values.
-	// It converts connection encoding to UTF8. Nil value means that connection uses UTF8.
-	dec atomic.Value // *TextDecoder
-
-	maxCmdName int
+	ec *Encoding
 
 	// OnKeepAlive is called when an empty (keep-alive) message is received.
 	OnKeepAlive func() error
@@ -69,7 +63,7 @@ type Reader struct {
 
 	// OnUnknownEncoding is called when a text with non-UTF8 encoding is received.
 	// It may either return a new decoder or return an error to fail the decoding.
-	OnUnknownEncoding func(text []byte) (*TextDecoder, error)
+	OnUnknownEncoding func(text []byte) (TextEncoding, error)
 
 	// OnUnmarshalError is called when a message cannot be parsed.
 	// It may either return false, nil to skip the message or true, err to return an error.
@@ -97,20 +91,14 @@ func (r *Reader) OnMessage(fnc func(m Message) (bool, error)) {
 	r.onMessage = append(r.onMessage, fnc)
 }
 
-// SetMaxCmdName sets a maximal length of the protocol command name in bytes.
-func (r *Reader) SetMaxCmdName(n int) {
-	r.maxCmdName = n
+// Encoding returns current protocol encoding.
+func (r *Reader) Encoding() *Encoding {
+	return r.ec
 }
 
-// Decoder returns current text decoder.
-func (r *Reader) Decoder() *TextDecoder {
-	dec, _ := r.dec.Load().(*TextDecoder)
-	return dec
-}
-
-// SetDecoder sets a text decoder for the connection.
-func (r *Reader) SetDecoder(dec *TextDecoder) {
-	r.dec.Store(dec)
+// SetEncoding sets current protocol encoding.
+func (r *Reader) SetEncoding(ec *Encoding) {
+	r.ec = ec
 }
 
 // ReadMsg reads a single message.
@@ -146,24 +134,18 @@ func (r *Reader) ReadMsgToAny(arr ...Message) (Message, error) {
 }
 
 func (r *Reader) readMsgTo(ptr *Message, allowed ...Message) error {
-	dec := r.Decoder()
 read:
 	for {
-		line, err := r.ReadLine()
+		line, err := r.r.ReadLine()
 		if err != nil {
 			return err
-		} else if n := len(line); n == 0 || line[n-1] != Delimiter {
-			return &ErrProtocolViolation{
-				Err: errors.New("no message delimiter"),
-			}
 		}
-		if bytes.IndexByte(line, 0x00) >= 0 {
-			return &ErrProtocolViolation{
-				Err: errors.New("message should not contain null characters"),
-			}
+		origLine := line
+		cmd, args, err := r.ec.splitLine(line)
+		if err != nil {
+			return err
 		}
-		line = line[:len(line)-1] // trim delimiter
-		if len(line) == 0 {
+		if len(cmd)+len(args) == 0 {
 			// keep-alive
 			if r.OnKeepAlive != nil {
 				if err := r.OnKeepAlive(); err != nil {
@@ -172,146 +154,55 @@ read:
 			}
 			continue // ignore
 		}
-		origLine := line
-		var (
-			out  = *ptr
-			cmd  []byte
-			args []byte
-		)
-		if line[0] == '$' {
-			line = line[1:]
-			// protocol command
-			cmd, args = line, nil // only name
-			if i := bytes.IndexByte(line, ' '); i >= 0 {
-				cmd, args = line[:i], line[i+1:] // name and args
-			}
-			for _, fnc := range r.onRawMessage {
-				if ok, err := fnc(cmd, args); err != nil {
-					return err
-				} else if !ok {
-					continue read // drop
-				}
-			}
-			if len(cmd) == 0 {
-				return &ErrProtocolViolation{
-					Err: errors.New("command name is empty"),
-				}
-			} else if len(cmd) > r.maxCmdName {
-				return &ErrProtocolViolation{
-					Err: errors.New("command name is too long"),
-				}
-			} else if !isASCII(cmd) {
-				return &ErrProtocolViolation{
-					Err: fmt.Errorf("command name should be in acsii: %q", string(cmd)),
-				}
-			}
-			typ := string(cmd)
-			if len(allowed) != 0 {
-				ok := false
-				for _, m := range allowed {
-					if _, raw := m.(*RawMessage); raw || m.Type() == typ {
-						ok = true
-						out = m
-						*ptr = m
-						break
-					}
-				}
-				if !ok {
-					return &ErrUnexpectedCommand{
-						Expected: allowed[0].Type(),
-						Received: &RawMessage{
-							Typ: typ, Data: args,
-						},
-					}
-				}
-			}
-			if out == nil {
-				// detect type by command name
-				out = NewMessage(typ)
-				*ptr = out
-			} else if _, ok := out.(*ChatMessage); ok {
-				return &ErrUnexpectedCommand{
-					Expected: "", // chat
-					Received: &RawMessage{
-						Typ: typ, Data: args,
-					},
-				}
-			} else if out.Type() != typ {
-				return &ErrUnexpectedCommand{
-					Expected: out.Type(),
-					Received: &RawMessage{
-						Typ: typ, Data: args,
-					},
-				}
-			}
-		} else {
-			// chat message
-			cmd, args = nil, line
-			for _, fnc := range r.onRawMessage {
-				if ok, err := fnc(cmd, args); err != nil {
-					return err
-				} else if !ok {
-					continue read // drop
-				}
-			}
-			if len(allowed) != 0 {
-				ok := false
-				for _, m := range allowed {
-					_, raw := m.(*RawMessage)
-					_, chat := m.(*ChatMessage)
-					if raw || chat {
-						ok = true
-						out = m
-						*ptr = m
-						break
-					}
-				}
-				if !ok {
-					return &ErrUnexpectedCommand{
-						Expected: allowed[0].Type(),
-						Received: &RawMessage{
-							Data: args,
-						},
-					}
-				}
-			}
-			if out == nil {
-				out = &ChatMessage{}
-				*ptr = out
-			} else if _, ok := out.(*ChatMessage); !ok {
-				return &ErrUnexpectedCommand{
-					Expected: out.Type(),
-					Received: &RawMessage{
-						// chat
-						Data: args,
-					},
-				}
+		for _, fnc := range r.onRawMessage {
+			if ok, err := fnc(cmd, args); err != nil {
+				return err
+			} else if !ok {
+				continue read // drop
 			}
 		}
-		err = out.UnmarshalNMDC(dec, args)
+		var eerr error
+		if len(allowed) != 0 {
+			var m Message
+			m, eerr = r.ec.unmarshalToAny(cmd, args, allowed)
+			if err == nil {
+				*ptr = m
+			}
+		} else {
+			eerr = r.ec.unmarshalTo(cmd, args, ptr)
+		}
+		out := *ptr
 		if r.OnUnknownEncoding != nil {
-			if e, ok := err.(*errUnknownEncoding); ok {
-				dec, err = r.OnUnknownEncoding(e.text)
+			if e, ok := eerr.(*errUnknownEncoding); ok {
+				tenc, err := r.OnUnknownEncoding(e.text)
 				if err != nil {
 					return err
 				}
-				if dec == nil {
+				ec := r.ec
+				if tenc == nil {
 					// cannot decode, but asked to continue
+					// this will replace invalid characters
 					args = bytes.Map(func(r rune) rune {
 						return r // only need to parse
 					}, args)
 				} else {
 					// switch encoding and decode again
-					r.SetDecoder(dec)
+					ec = ec.Clone()
+					ec.setTextDecoder(tenc.NewDecoder())
 				}
-				err = out.UnmarshalNMDC(dec, args)
+				eerr = out.UnmarshalNMDC(ec, args)
+				if eerr == nil && tenc != nil {
+					// apply new encoding
+					ec.SetTextEncoding(tenc)
+					r.ec = ec
+				}
 			}
 		}
-		if err != nil {
+		if eerr != nil {
 			if r.OnUnmarshalError == nil {
-				return err
+				return eerr
 			}
-			ok, err := r.OnUnmarshalError(origLine, err)
+			ok, err := r.OnUnmarshalError(origLine, eerr)
 			if !ok {
 				continue read // ignore
 			}
