@@ -6,6 +6,27 @@ import (
 	"github.com/direct-connect/go-dc/types"
 )
 
+func myInfo(name string) *MyINFO {
+	return &MyINFO{
+		Name: name,
+		Desc: "RU",
+		Client: types.Software{
+			Name:    "ApexDC++",
+			Version: "0.4.0",
+		},
+		Mode:           UserModePassive,
+		HubsNormal:     27,
+		HubsRegistered: 1,
+		HubsOperator:   3,
+		Slots:          92,
+		Extra:          map[string]string{"L": "512"},
+		Conn:           "LAN(T3)",
+		Flag:           'K',
+		Email:          "example@example.com",
+		ShareSize:      1234,
+	}
+}
+
 var userCases = []casesMessageEntry{
 	{
 		typ:  "MyINFO",
