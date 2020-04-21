@@ -8,7 +8,7 @@ import (
 )
 
 var (
-	errWriterClosed = errors.New("writer is closed")
+	errWriterClosed = errors.New("lineproto: writer is closed")
 )
 
 type LineWriter interface {

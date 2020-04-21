@@ -16,10 +16,10 @@ const (
 )
 
 var (
-	errReaderClosed      = errors.New("reader is closed")
-	errBufferExhausted   = errors.New("message is too long")
-	errZlibAlreadyActive = errors.New("zlib already activated")
-	errZlibNotActive     = errors.New("zlib not activate")
+	errReaderClosed      = errors.New("lineproto: reader is closed")
+	errBufferExhausted   = errors.New("lineproto: message is too long")
+	errZlibAlreadyActive = errors.New("lineproto: zlib already activated")
+	errZlibNotActive     = errors.New("lineproto: zlib not activate")
 )
 
 var _ interface {
