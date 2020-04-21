@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
+	"strings"
 	"unicode"
 	"unicode/utf8"
 )
@@ -18,6 +19,7 @@ func init() {
 
 type ChatMessage struct {
 	Name string
+	Me   bool
 	Text string
 }
 
@@ -25,7 +27,11 @@ func (m *ChatMessage) String() string {
 	if m.Name == "" {
 		return m.Text
 	}
-	return "<" + string(m.Name) + "> " + m.Text
+	me := ""
+	if m.Me {
+		me = "/me "
+	}
+	return "<" + string(m.Name) + "> " + me + m.Text
 }
 
 func (m *ChatMessage) Type() string {
@@ -41,7 +47,14 @@ func (m *ChatMessage) MarshalNMDC(enc *TextEncoder, buf *bytes.Buffer) error {
 		}
 		buf.WriteString("> ")
 	}
-	err := String(m.Text).MarshalNMDC(enc, buf)
+	if m.Me {
+		buf.WriteString("/me ")
+	}
+	text := m.Text
+	if m.Me && strings.HasPrefix(text, "/me ") {
+		text = text[4:]
+	}
+	err := String(text).MarshalNMDC(enc, buf)
 	if err != nil {
 		return err
 	}
@@ -107,11 +120,16 @@ func (m *ChatMessage) UnmarshalNMDC(dec *TextDecoder, data []byte) error {
 		return err
 	}
 	m.Text = string(text)
+	m.Me = strings.HasPrefix(m.Text, "/me ")
+	if m.Me {
+		m.Text = m.Text[4:]
+	}
 	return nil
 }
 
 type PrivateMessage struct {
 	To, From string
+	Me       bool
 	Name     string
 	Text     string
 }
@@ -130,13 +148,24 @@ func (m *PrivateMessage) MarshalNMDC(enc *TextEncoder, buf *bytes.Buffer) error 
 		return err
 	}
 
+	name := m.Name
+	if name == "" {
+		name = m.From
+	}
 	buf.WriteString(" $<")
-	if err := Name(m.Name).MarshalNMDC(enc, buf); err != nil {
+	if err := Name(name).MarshalNMDC(enc, buf); err != nil {
 		return err
 	}
 	buf.WriteString("> ")
 
-	if err := String(m.Text).MarshalNMDC(enc, buf); err != nil {
+	if m.Me {
+		buf.WriteString("/me ")
+	}
+	text := m.Text
+	if m.Me && strings.HasPrefix(text, "/me ") {
+		text = text[4:]
+	}
+	if err := String(text).MarshalNMDC(enc, buf); err != nil {
 		return err
 	}
 	return nil
@@ -179,11 +208,16 @@ func (m *PrivateMessage) UnmarshalNMDC(dec *TextDecoder, data []byte) error {
 		return err
 	}
 	m.Text = string(s)
+	m.Me = strings.HasPrefix(m.Text, "/me ")
+	if m.Me {
+		m.Text = m.Text[4:]
+	}
 	return nil
 }
 
 type MCTo struct {
 	To, From string
+	Me       bool
 	Text     string
 }
 
@@ -202,7 +236,14 @@ func (m *MCTo) MarshalNMDC(enc *TextEncoder, buf *bytes.Buffer) error {
 	}
 
 	buf.WriteByte(' ')
-	if err := String(m.Text).MarshalNMDC(enc, buf); err != nil {
+	if m.Me {
+		buf.WriteString("/me ")
+	}
+	text := m.Text
+	if m.Me && strings.HasPrefix(text, "/me ") {
+		text = text[4:]
+	}
+	if err := String(text).MarshalNMDC(enc, buf); err != nil {
 		return err
 	}
 	return nil
@@ -233,6 +274,10 @@ func (m *MCTo) UnmarshalNMDC(dec *TextDecoder, data []byte) error {
 		return err
 	}
 	m.Text = string(s)
+	m.Me = strings.HasPrefix(m.Text, "/me ")
+	if m.Me {
+		m.Text = m.Text[4:]
+	}
 	return nil
 }
 

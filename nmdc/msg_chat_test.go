@@ -6,6 +6,23 @@ import (
 
 var chatCases = []casesMessageEntry{
 	{
+		name: "chat",
+		data: "<bob> text",
+		msg: &ChatMessage{
+			Name: "bob",
+			Text: "text",
+		},
+	},
+	{
+		name: "me",
+		data: "<bob> /me text",
+		msg: &ChatMessage{
+			Name: "bob",
+			Me:   true,
+			Text: "text",
+		},
+	},
+	{
 		typ:  "To:",
 		data: `john From: room $<peter> dogs are more cute`,
 		msg: &PrivateMessage{
@@ -26,11 +43,32 @@ var chatCases = []casesMessageEntry{
 		},
 	},
 	{
+		typ:  "To:",
+		data: `user 1 From: room 1 $<user 2> /me private message`,
+		msg: &PrivateMessage{
+			To:   "user 1",
+			From: "room 1",
+			Name: "user 2",
+			Me:   true,
+			Text: "private message",
+		},
+	},
+	{
 		typ:  "MCTo",
 		data: `target $sender some message`,
 		msg: &MCTo{
 			To:   "target",
 			From: "sender",
+			Text: "some message",
+		},
+	},
+	{
+		typ:  "MCTo",
+		data: `target $sender /me some message`,
+		msg: &MCTo{
+			To:   "target",
+			From: "sender",
+			Me:   true,
 			Text: "some message",
 		},
 	},
