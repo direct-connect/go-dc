@@ -138,9 +138,9 @@ type HubInfo struct {
 	//int `adc:"MU"` // Minimum hubs connected where clients can be users
 	//int `adc:"MR"` // Minimum hubs connected where client can be registered
 	//int `adc:"MO"` // Minimum hubs connected where client can be operators
-	//int `adc:"XU"` // Maximum hubs connected where clients can be users
-	//int `adc:"XR"` // Maximum hubs connected where client can be registered
-	//int `adc:"XO"` // Maximum hubs connected where client can be operators
+	MaxHubsUser int   `adc:"XU"` // Maximum hubs connected where clients can be users
+	MaxHubsReg  int   `adc:"XR"` // Maximum hubs connected where client can be registered
+	MaxHubsOp   int   `adc:"XO"` // Maximum hubs connected where client can be operators
 }
 
 func (HubInfo) Cmd() MsgType {
