@@ -11,6 +11,8 @@ import (
 
 func init() {
 	RegisterMessage(&BotINFO{})
+	RegisterMessage(&SetIcon{})
+	RegisterMessage(&SetLogo{})
 	RegisterMessage(&HubINFO{})
 }
 
@@ -21,6 +23,22 @@ type BotINFO struct {
 
 func (*BotINFO) Type() string {
 	return "BotINFO"
+}
+
+type SetIcon struct {
+	String
+}
+
+func (*SetIcon) Type() string {
+	return "SetIcon"
+}
+
+type SetLogo struct {
+	String
+}
+
+func (*SetLogo) Type() string {
+	return "SetLogo"
 }
 
 // HubINFO is a detailed hub information exposed only after receiving BotINFO.
