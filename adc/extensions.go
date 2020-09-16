@@ -29,6 +29,9 @@ var (
 	FeaSUDP = Feature{'S', 'U', 'D', 'P'}
 	FeaCCPM = Feature{'C', 'C', 'P', 'M'}
 
+	FeaBLO0 = Feature{'B', 'L', 'O', '0'} // unknown from adch++
+	FeaSIPR = Feature{'S', 'I', 'P', 'R'}
+
 	// feature markers to indicate active mode
 
 	// FeaTCP4 should be set in user's INF to indicate that the client has an open TCP4 port (is active).
