@@ -4,6 +4,10 @@ import (
 	"testing"
 )
 
+func newUint64(v uint64) *uint64 {
+	return &v
+}
+
 var filesCases = []casesMessageEntry{
 	{
 		typ:  "ADCGET",
@@ -50,32 +54,24 @@ var filesCases = []casesMessageEntry{
 		typ:  "ADCGET",
 		data: `file TTH/BR4BVJBMHDFVCFI4WBPSL63W5TWXWVBSC574BLI 123523 65 ZL1 DB15`,
 		msg: &ADCGet{
-			ContentType: "file",
-			Identifier:  "TTH/BR4BVJBMHDFVCFI4WBPSL63W5TWXWVBSC574BLI",
-			Start:       123523,
-			Length:      65,
-			Compressed:  true,
-			DownloadedBytes: func() *uint64 {
-				ret := new(uint64)
-				*ret = 15
-				return ret
-			}(),
+			ContentType:     "file",
+			Identifier:      "TTH/BR4BVJBMHDFVCFI4WBPSL63W5TWXWVBSC574BLI",
+			Start:           123523,
+			Length:          65,
+			Compressed:      true,
+			DownloadedBytes: newUint64(15),
 		},
 	},
 	{
 		typ:  "ADCGET",
 		data: `file TTH/BR4BVJBMHDFVCFI4WBPSL63W5TWXWVBSC574BLI 123523 65 DB15`,
 		msg: &ADCGet{
-			ContentType: "file",
-			Identifier:  "TTH/BR4BVJBMHDFVCFI4WBPSL63W5TWXWVBSC574BLI",
-			Start:       123523,
-			Length:      65,
-			Compressed:  false,
-			DownloadedBytes: func() *uint64 {
-				ret := new(uint64)
-				*ret = 15
-				return ret
-			}(),
+			ContentType:     "file",
+			Identifier:      "TTH/BR4BVJBMHDFVCFI4WBPSL63W5TWXWVBSC574BLI",
+			Start:           123523,
+			Length:          65,
+			Compressed:      false,
+			DownloadedBytes: newUint64(15),
 		},
 	},
 	{
