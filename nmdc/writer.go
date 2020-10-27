@@ -69,10 +69,13 @@ func (w *Writer) WriteKeepAlive() error {
 // WriteMsg encodes and writes a NMDC protocol message.
 func (w *Writer) WriteMsg(msg ...Message) error {
 	enc := w.ec
+loop:
 	for _, m := range msg {
 		for _, fnc := range w.onMessage {
-			if ok, err := fnc(m); err != nil || !ok {
+			if ok, err := fnc(m); err != nil {
 				return err
+			} else if !ok {
+				continue loop // drop
 			}
 		}
 		w.mbuf.Reset()
