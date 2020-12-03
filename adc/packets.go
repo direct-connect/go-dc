@@ -148,6 +148,17 @@ func (p *InfoPacket) SetMessage(m Message) {
 }
 
 func (p *InfoPacket) DecodeMessage() error {
+	// special case: hub info
+	infoType := MsgType{'I', 'N', 'F'}
+	if p.Msg.Cmd() == infoType {
+		msg := HubInfo{}
+		if err := Unmarshal(p.Msg.(*RawMessage).Data, &msg); err != nil {
+			return err
+		}
+		p.Msg = msg
+		return nil
+	}
+
 	return decodeMessage(&p.Msg)
 }
 
